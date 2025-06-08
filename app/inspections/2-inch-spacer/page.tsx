@@ -33,7 +33,8 @@ export default function TwoInchSpacerForm() {
       id: "salesperson",
       label: "Salesperson",
       type: "salesperson-lookup" as const,
-      required: false
+      required: false,
+      autoFillFrom: "soNo"
     },
     {
       id: "location",

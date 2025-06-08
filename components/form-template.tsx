@@ -1,171 +1,187 @@
 "use client"
 
+import { useState, useEffect } from "react"
 import { Button } from "@/components/ui/button"
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
 import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
-import { Separator } from "@/components/ui/separator"
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
-import { SalesOrderSelector } from "@/components/sales-order-selector"
+import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
 import { PurchaseOrderSelector } from "@/components/purchase-order-selector"
+import { SalesOrderSelector } from "@/components/sales-order-selector"
 import { SalespersonSelector } from "@/components/salesperson-selector"
-import { useSession } from "next-auth/react"
-import { useEffect, useState } from "react"
+
+type FieldType = 
+  | "text" 
+  | "number" 
+  | "textarea" 
+  | "datetime-local" 
+  | "tel"
+  | "so-lookup"
+  | "po-lookup" 
+  | "salesperson-lookup"
+
+type AutoFillType = "datetime" | "inspector"
+
+interface FormField {
+  id: string
+  label: string
+  type: FieldType
+  placeholder?: string
+  required?: boolean
+  autoFill?: AutoFillType
+  autoFillFrom?: string
+}
 
 interface FormTemplateProps {
   title: string
-  description?: string
-  fields: Array<{
-    id: string
-    label: string
-    type?: "text" | "number" | "email" | "tel" | "textarea" | "select" | "date" | "datetime-local" | "so-lookup" | "po-lookup" | "salesperson-lookup"
-    placeholder?: string
-    required?: boolean
-    options?: string[]
-    autoFill?: "inspector" | "datetime"
-    autoFillFrom?: string
-  }>
+  description: string
+  fields: FormField[]
 }
 
 export function FormTemplate({ title, description, fields }: FormTemplateProps) {
-  const { data: session } = useSession()
-  const [formValues, setFormValues] = useState<Record<string, string>>({})
+  const [formData, setFormData] = useState<Record<string, string>>({})
+  const [inspectorName, setInspectorName] = useState("")
 
   useEffect(() => {
-    const autoFillValues: Record<string, string> = {}
+    const initialData: Record<string, string> = {}
     
-    fields.forEach((field) => {
-      if (field.autoFill === "inspector" && session?.user?.name) {
-        autoFillValues[field.id] = session.user.name
-      } else if (field.autoFill === "datetime") {
-        const now = new Date()
-        const localDateTime = new Date(now.getTime() - (now.getTimezoneOffset() * 60000))
-        autoFillValues[field.id] = localDateTime.toISOString().slice(0, 16)
+    fields.forEach(field => {
+      if (field.autoFill === "datetime") {
+        initialData[field.id] = new Date().toISOString().slice(0, 16)
+      } else if (field.autoFill === "inspector") {
+        initialData[field.id] = inspectorName
       }
     })
     
-    setFormValues(autoFillValues)
-  }, [fields, session])
+    setFormData(initialData)
+  }, [fields, inspectorName])
 
-  const getFieldValue = (fieldId: string) => {
-    return formValues[fieldId] || ""
+  const handleInputChange = (fieldId: string, value: string) => {
+    setFormData(prev => ({ ...prev, [fieldId]: value }))
+    
+    if (fieldId === "inspectorName") {
+      setInspectorName(value)
+    }
+    
+    // Handle auto-fill from SO number
+    const field = fields.find(f => f.id === fieldId)
+    if (field?.id === "soNo") {
+      // Auto-fill salesperson when SO is selected
+      const salespersonField = fields.find(f => f.autoFillFrom === "soNo")
+      if (salespersonField) {
+        // This would be populated by the SalesOrderSelector component
+      }
+    }
   }
 
-  const updateFieldValue = (fieldId: string, value: string, relatedData?: any) => {
-    setFormValues(prev => ({
-      ...prev,
-      [fieldId]: value
-    }))
-    
-    // Handle auto-fill from related data
-    if (relatedData) {
-      fields.forEach(field => {
-        if (field.autoFillFrom === fieldId) {
-          // Auto-fill salesperson from sales order
-          if (fieldId === 'soNo' && field.id === 'salesperson' && relatedData.salespersonCode) {
-            setFormValues(prev => ({
-              ...prev,
-              [field.id]: relatedData.salespersonCode
-            }))
-          }
-        }
-      })
+  const handleSubmit = (e: React.FormEvent) => {
+    e.preventDefault()
+    console.log("Form submitted:", formData)
+    // Handle form submission
+  }
+
+  const renderField = (field: FormField) => {
+    const commonProps = {
+      id: field.id,
+      required: field.required,
+      value: formData[field.id] || "",
+    }
+
+    switch (field.type) {
+      case "so-lookup":
+        return (
+          <SalesOrderSelector
+            value={formData[field.id]}
+            onSelect={(soNumber, salesOrder) => {
+              handleInputChange(field.id, soNumber)
+              // Auto-fill salesperson if there's a salesperson field
+              const salespersonField = fields.find(f => f.autoFillFrom === "soNo")
+              if (salespersonField && salesOrder?.salespersonCode) {
+                handleInputChange(salespersonField.id, salesOrder.salespersonCode)
+              }
+            }}
+            required={field.required}
+          />
+        )
+      
+      case "po-lookup":
+        return (
+          <PurchaseOrderSelector
+            value={formData[field.id]}
+            onSelect={(poNumber) => handleInputChange(field.id, poNumber)}
+            required={field.required}
+          />
+        )
+      
+      case "salesperson-lookup":
+        return (
+          <SalespersonSelector
+            value={formData[field.id]}
+            onSelect={(salesperson) => handleInputChange(field.id, salesperson)}
+            required={field.required}
+          />
+        )
+      
+      case "textarea":
+        return (
+          <div className="space-y-2">
+            <Label htmlFor={field.id}>
+              {field.label}
+              {field.required && <span className="text-destructive ml-1">*</span>}
+            </Label>
+            <textarea
+              {...commonProps}
+              placeholder={field.placeholder}
+              onChange={(e) => handleInputChange(field.id, e.target.value)}
+              className="flex min-h-[80px] w-full rounded-md border border-input bg-background px-3 py-2 text-sm ring-offset-background placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 disabled:cursor-not-allowed disabled:opacity-50"
+            />
+          </div>
+        )
+      
+      default:
+        return (
+          <div className="space-y-2">
+            <Label htmlFor={field.id}>
+              {field.label}
+              {field.required && <span className="text-destructive ml-1">*</span>}
+            </Label>
+            <Input
+              {...commonProps}
+              type={field.type}
+              placeholder={field.placeholder}
+              onChange={(e) => handleInputChange(field.id, e.target.value)}
+            />
+          </div>
+        )
     }
   }
 
   return (
-    <div className="p-4 md:p-6">
-      <div className="max-w-2xl mx-auto">
-      <Card>
-        <CardHeader>
-          <CardTitle className="text-2xl">{title}</CardTitle>
-          {description && <CardDescription>{description}</CardDescription>}
+    <div className="w-full p-4 sm:p-6">
+      <Card className="w-full max-w-4xl mx-auto">
+        <CardHeader className="pb-4">
+          <CardTitle className="text-lg sm:text-xl">{title}</CardTitle>
+          <CardDescription className="text-sm">{description}</CardDescription>
         </CardHeader>
-        <Separator />
-        <CardContent className="pt-6">
-          <form className="space-y-4">
-            {fields.map((field) => (
-              <div key={field.id} className="space-y-2">
-                {field.type === "so-lookup" ? (
-                  <SalesOrderSelector
-                    value={getFieldValue(field.id)}
-                    onSelect={(value, salesOrder) => updateFieldValue(field.id, value, salesOrder)}
-                    required={field.required}
-                  />
-                ) : field.type === "po-lookup" ? (
-                  <PurchaseOrderSelector
-                    value={getFieldValue(field.id)}
-                    onSelect={(value) => updateFieldValue(field.id, value)}
-                    required={field.required}
-                  />
-                ) : field.type === "salesperson-lookup" ? (
-                  <SalespersonSelector
-                    value={getFieldValue(field.id)}
-                    onSelect={(value) => updateFieldValue(field.id, value)}
-                    required={field.required}
-                  />
-                ) : (
-                  <>
-                    <Label htmlFor={field.id}>
-                      {field.label}
-                      {field.required && <span className="text-destructive ml-1">*</span>}
-                    </Label>
-                    {field.type === "textarea" ? (
-                      <textarea
-                        id={field.id}
-                        name={field.id}
-                        placeholder={field.placeholder}
-                        required={field.required}
-                        value={getFieldValue(field.id)}
-                        onChange={(e) => updateFieldValue(field.id, e.target.value)}
-                        className="flex min-h-[80px] w-full rounded-md border border-input bg-background px-3 py-2 text-sm ring-offset-background placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 disabled:cursor-not-allowed disabled:opacity-50"
-                      />
-                    ) : field.type === "select" && field.options ? (
-                      <Select 
-                        name={field.id} 
-                        required={field.required} 
-                        value={getFieldValue(field.id)}
-                        onValueChange={(value) => updateFieldValue(field.id, value)}
-                      >
-                        <SelectTrigger>
-                          <SelectValue placeholder="Select an option" />
-                        </SelectTrigger>
-                        <SelectContent>
-                          {field.options.map((option) => (
-                            <SelectItem key={option} value={option}>
-                              {option}
-                            </SelectItem>
-                          ))}
-                        </SelectContent>
-                      </Select>
-                    ) : (
-                      <Input
-                        id={field.id}
-                        name={field.id}
-                        type={field.type || "text"}
-                        placeholder={field.placeholder}
-                        required={field.required}
-                        value={getFieldValue(field.id)}
-                        onChange={(e) => updateFieldValue(field.id, e.target.value)}
-                      />
-                    )}
-                  </>
-                )}
-              </div>
-            ))}
-            <Separator className="my-6" />
-            <div className="flex gap-3">
-              <Button type="submit" className="flex-1">
-                Submit Inspection
+        <CardContent className="p-4 sm:p-6">
+          <form onSubmit={handleSubmit} className="space-y-4">
+            <div className="space-y-4">
+              {fields.map((field) => (
+                <div key={field.id} className="w-full">
+                  {renderField(field)}
+                </div>
+              ))}
+            </div>
+            <div className="flex flex-col sm:flex-row gap-3 sm:justify-end pt-6">
+              <Button type="button" variant="outline" className="w-full sm:w-auto">
+                Cancel
               </Button>
-              <Button type="button" variant="outline" className="flex-1">
-                Save Draft
+              <Button type="submit" className="w-full sm:w-auto">
+                Submit Inspection
               </Button>
             </div>
           </form>
         </CardContent>
       </Card>
-      </div>
     </div>
   )
 }

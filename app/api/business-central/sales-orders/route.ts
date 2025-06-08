@@ -14,7 +14,19 @@ interface BCTokenResponse {
   expires_in: number
 }
 
+interface CachedToken {
+  token: string
+  expiresAt: number
+}
+
+let tokenCache: CachedToken | null = null
+
 async function getBCAccessToken(): Promise<string> {
+  // Check if we have a valid cached token
+  if (tokenCache && Date.now() < tokenCache.expiresAt) {
+    return tokenCache.token
+  }
+
   const tokenUrl = `https://login.microsoftonline.com/${process.env.BC_TENANT_ID}/oauth2/v2.0/token`
   
   const params = new URLSearchParams({
@@ -39,6 +51,13 @@ async function getBCAccessToken(): Promise<string> {
   }
 
   const data: BCTokenResponse = await response.json()
+  
+  // Cache the token with 5 minute buffer before expiry
+  tokenCache = {
+    token: data.access_token,
+    expiresAt: Date.now() + (data.expires_in - 300) * 1000
+  }
+  
   return data.access_token
 }
 
@@ -58,23 +77,28 @@ export async function GET(request: NextRequest) {
     // Use correct endpoint with proper case - BC_Sandbox works, bc-sandbox gives auth errors
     const apiUrl = `https://api.businesscentral.dynamics.com/v2.0/${process.env.BC_TENANT_ID}/BC_Sandbox/ODataV4/Company('CFI%20Tire')/SalesOrder`
     
-    let allSalesOrders: SalesOrder[] = []
-    
     // Since BC doesn't support OR between different fields, we need to make separate queries
-    console.log('Searching SO by number and customer name separately...')
+    console.log('Searching SO by number and customer name in parallel...')
     
-    // Search by SO number - use startswith for more precise number matching
-    const numberFilterQuery = `?$filter=startswith(No,'${search}')`
-    console.log('Fetching SO by number from URL:', `${apiUrl}${numberFilterQuery}`)
+    // Create both queries with limits and ordering for faster response (newest first)
+    const numberFilterQuery = `?$filter=startswith(No,'${search}')&$top=50&$orderby=Order_Date desc`
+    const customerFilterQuery = `?$filter=contains(Sell_to_Customer_Name,'${search}')&$top=50&$orderby=Order_Date desc`
     
-    const numberResponse = await fetch(`${apiUrl}${numberFilterQuery}`, {
-      headers: {
-        'Authorization': `Bearer ${accessToken}`,
-        'Accept': 'application/json',
-        'Content-Type': 'application/json'
-      }
-    })
+    const headers = {
+      'Authorization': `Bearer ${accessToken}`,
+      'Accept': 'application/json',
+      'Content-Type': 'application/json'
+    }
 
+    // Run both queries in parallel
+    const [numberResponse, customerResponse] = await Promise.all([
+      fetch(`${apiUrl}${numberFilterQuery}`, { headers }),
+      fetch(`${apiUrl}${customerFilterQuery}`, { headers })
+    ])
+
+    let allSalesOrders: SalesOrder[] = []
+
+    // Process number search results
     if (numberResponse.ok) {
       const numberData = await numberResponse.json()
       const numberOrders = numberData.value?.map((order: any) => ({
@@ -87,18 +111,7 @@ export async function GET(request: NextRequest) {
       allSalesOrders.push(...numberOrders)
     }
 
-    // Search by customer name
-    const customerFilterQuery = `?$filter=contains(Sell_to_Customer_Name,'${search}')`
-    console.log('Fetching SO by customer from URL:', `${apiUrl}${customerFilterQuery}`)
-    
-    const customerResponse = await fetch(`${apiUrl}${customerFilterQuery}`, {
-      headers: {
-        'Authorization': `Bearer ${accessToken}`,
-        'Accept': 'application/json',
-        'Content-Type': 'application/json'
-      }
-    })
-
+    // Process customer search results and merge, avoiding duplicates
     if (customerResponse.ok) {
       const customerData = await customerResponse.json()
       const customerOrders = customerData.value?.map((order: any) => ({
@@ -116,6 +129,19 @@ export async function GET(request: NextRequest) {
         }
       })
     }
+
+    // Sort by relevance: exact matches first, then by order date (newest first)
+    allSalesOrders.sort((a, b) => {
+      const aExact = a.number.toLowerCase() === search.toLowerCase()
+      const bExact = b.number.toLowerCase() === search.toLowerCase()
+      if (aExact && !bExact) return -1
+      if (!aExact && bExact) return 1
+      
+      // Sort by date descending (newest first)
+      const dateA = new Date(a.orderDate || 0).getTime()
+      const dateB = new Date(b.orderDate || 0).getTime()
+      return dateB - dateA
+    })
 
     return NextResponse.json({ salesOrders: allSalesOrders })
   } catch (error) {
