@@ -31,10 +31,13 @@ export async function GET() {
     const accessToken = await getBCAccessToken()
     
     // Try different endpoints to see what's available
+    const environment = process.env.BC_ENVIRONMENT || 'BC_Sandbox'
+    const company = process.env.BC_COMPANY || 'CFI%20Tire'
+    
     const endpoints = [
-      `https://api.businesscentral.dynamics.com/v2.0/${process.env.BC_TENANT_ID}/BC_Sandbox/ODataV4/Company('CFI%20Tire')/salesOrders`,
-      `https://api.businesscentral.dynamics.com/v2.0/${process.env.BC_TENANT_ID}/BC_Sandbox/ODataV4/Company('CFI%20Tire')/SalesOrder`,
-      `https://api.businesscentral.dynamics.com/v2.0/${process.env.BC_TENANT_ID}/BC_Sandbox/ODataV4/Company('CFI%20Tire')/$metadata`,
+      `https://api.businesscentral.dynamics.com/v2.0/${process.env.BC_TENANT_ID}/${environment}/ODataV4/Company('${company}')/salesOrders`,
+      `https://api.businesscentral.dynamics.com/v2.0/${process.env.BC_TENANT_ID}/${environment}/ODataV4/Company('${company}')/SalesOrder`,
+      `https://api.businesscentral.dynamics.com/v2.0/${process.env.BC_TENANT_ID}/${environment}/ODataV4/Company('${company}')/$metadata`,
     ]
 
     const results = []
@@ -75,7 +78,7 @@ export async function GET() {
           endpoint,
           status: 'error',
           success: false,
-          error: error.message
+          error: error instanceof Error ? error.message : 'Unknown error'
         })
       }
     }
@@ -83,6 +86,6 @@ export async function GET() {
     return NextResponse.json({ results })
   } catch (error) {
     console.error('Metadata test error:', error)
-    return NextResponse.json({ error: error.message }, { status: 500 })
+    return NextResponse.json({ error: error instanceof Error ? error.message : 'Unknown error' }, { status: 500 })
   }
 }

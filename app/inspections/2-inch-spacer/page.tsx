@@ -39,8 +39,8 @@ export default function TwoInchSpacerForm() {
     {
       id: "location",
       label: "Location",
-      type: "text" as const,
-      placeholder: "Enter location",
+      type: "location-lookup" as const,
+      placeholder: "Select location",
       required: false
     },
     {

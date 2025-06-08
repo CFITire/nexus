@@ -41,8 +41,8 @@ export default function UsedTrackForm() {
     {
       id: "location",
       label: "Location",
-      type: "text" as const,
-      placeholder: "Current track location",
+      type: "location-lookup" as const,
+      placeholder: "Select location",
       required: false
     },
     {

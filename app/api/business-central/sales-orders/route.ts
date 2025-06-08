@@ -66,6 +66,35 @@ export async function GET(request: NextRequest) {
     const { searchParams } = new URL(request.url)
     const search = searchParams.get('search') || ''
     
+    // Skip Business Central API call only if explicitly disabled
+    if (process.env.BC_DISABLE_API === 'true') {
+      const mockOrders = [
+        {
+          number: "SO001234",
+          customerName: "ABC Construction", 
+          orderDate: "2024-06-08",
+          status: "Open",
+          salespersonCode: "JOHN"
+        },
+        {
+          number: "SO001235",
+          customerName: "XYZ Mining Corp",
+          orderDate: "2024-06-07", 
+          status: "Released",
+          salespersonCode: "JANE"
+        }
+      ]
+      
+      const filteredOrders = search && search.trim().length >= 2
+        ? mockOrders.filter(order => 
+            order.number.toLowerCase().includes(search.toLowerCase()) ||
+            order.customerName.toLowerCase().includes(search.toLowerCase())
+          )
+        : (search ? [] : mockOrders)
+        
+      return NextResponse.json({ salesOrders: filteredOrders })
+    }
+    
     // Don't return any results if no search term provided
     if (!search || search.trim().length < 2) {
       return NextResponse.json({ salesOrders: [] })
@@ -74,8 +103,10 @@ export async function GET(request: NextRequest) {
     // Get access token
     const accessToken = await getBCAccessToken()
     
-    // Use correct endpoint with proper case - BC_Sandbox works, bc-sandbox gives auth errors
-    const apiUrl = `https://api.businesscentral.dynamics.com/v2.0/${process.env.BC_TENANT_ID}/BC_Sandbox/ODataV4/Company('CFI%20Tire')/SalesOrder`
+    // Use environment variables for flexible configuration
+    const environment = process.env.BC_ENVIRONMENT || 'BC_Sandbox'
+    const company = process.env.BC_COMPANY || 'CFI%20Tire'
+    const apiUrl = `https://api.businesscentral.dynamics.com/v2.0/${process.env.BC_TENANT_ID}/${environment}/ODataV4/Company('${company}')/SalesOrder`
     
     // Since BC doesn't support OR between different fields, we need to make separate queries
     console.log('Searching SO by number and customer name in parallel...')
@@ -146,6 +177,39 @@ export async function GET(request: NextRequest) {
     return NextResponse.json({ salesOrders: allSalesOrders })
   } catch (error) {
     console.error('Error fetching sales orders:', error)
+    
+    // Fall back to mock data only if BC API is disabled
+    if (process.env.BC_DISABLE_API === 'true') {
+      const { searchParams } = new URL(request.url)
+      const search = searchParams.get('search') || ''
+      
+      const mockOrders = [
+        {
+          number: "SO001234",
+          customerName: "ABC Construction",
+          orderDate: "2024-06-08",
+          status: "Open",
+          salespersonCode: "JOHN"
+        },
+        {
+          number: "SO001235", 
+          customerName: "XYZ Mining Corp",
+          orderDate: "2024-06-07",
+          status: "Released",
+          salespersonCode: "JANE"
+        }
+      ]
+      
+      const filteredOrders = search 
+        ? mockOrders.filter(order => 
+            order.number.toLowerCase().includes(search.toLowerCase()) ||
+            order.customerName.toLowerCase().includes(search.toLowerCase())
+          )
+        : mockOrders
+        
+      return NextResponse.json({ salesOrders: filteredOrders })
+    }
+    
     return NextResponse.json(
       { error: 'Failed to fetch sales orders' },
       { status: 500 }

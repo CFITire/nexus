@@ -20,7 +20,7 @@ export default function UsedTireForm() {
     {
       id: "soNo",
       label: "SO No.",
-      type: "text" as const,
+      type: "so-lookup" as const,
       placeholder: "Enter sales order number",
       required: false
     },
@@ -36,13 +36,14 @@ export default function UsedTireForm() {
       label: "Salesperson",
       type: "text" as const,
       placeholder: "Enter salesperson name",
-      required: false
+      required: false,
+      autoFillFrom: "soNo" as const
     },
     {
       id: "location",
       label: "Location",
-      type: "text" as const,
-      placeholder: "Current tire location",
+      type: "location-lookup" as const,
+      placeholder: "Select location",
       required: false
     },
     {

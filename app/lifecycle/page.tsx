@@ -1,14 +1,12 @@
 import { AppSidebar } from "@/components/app-sidebar"
-import { DashboardContent } from "@/components/dashboard-content"
+import { LifecycleContent } from "@/components/lifecycle-content"
 import { SiteHeader } from "@/components/site-header"
 import {
   SidebarInset,
   SidebarProvider,
 } from "@/components/ui/sidebar"
 
-import data from "./data.json"
-
-export default function Page() {
+export default function LifecyclePage() {
   return (
     <SidebarProvider
       style={
@@ -21,7 +19,7 @@ export default function Page() {
       <AppSidebar variant="inset" />
       <SidebarInset>
         <SiteHeader />
-        <DashboardContent documentData={data} />
+        <LifecycleContent />
       </SidebarInset>
     </SidebarProvider>
   )
