@@ -36,6 +36,11 @@ async function main() {
       name: 'settings',
       displayName: 'Settings',
       description: 'Access to application settings'
+    },
+    {
+      name: 'analytics',
+      displayName: 'Analytics',
+      description: 'Access to system analytics and reports'
     }
   ]
 

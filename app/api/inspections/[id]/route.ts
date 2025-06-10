@@ -3,10 +3,11 @@ import { bcClient } from '@/lib/business-central'
 
 export async function PATCH(
   request: NextRequest,
-  { params }: { params: { id: string } }
+  { params }: { params: Promise<{ id: string }> }
 ) {
   try {
-    const inspectionNo = params.id
+    const { id } = await params
+    const inspectionNo = id
     const body = await request.json()
     const { status } = body
 
@@ -43,10 +44,11 @@ export async function PATCH(
 
 export async function GET(
   request: NextRequest,
-  { params }: { params: { id: string } }
+  { params }: { params: Promise<{ id: string }> }
 ) {
   try {
-    const inspectionNo = params.id
+    const { id } = await params
+    const inspectionNo = id
     
     const header = await bcClient.getInspectionHeader(inspectionNo)
     const lines = await bcClient.getInspectionLines(inspectionNo)

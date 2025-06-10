@@ -9,6 +9,7 @@ import { Badge } from "@/components/ui/badge"
 import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog"
 import { Checkbox } from "@/components/ui/checkbox"
 import { IconPlus, IconEdit, IconTrash, IconUsers } from "@tabler/icons-react"
+import { toast } from "sonner"
 
 interface ADGroup {
   id: string
@@ -39,6 +40,7 @@ const AVAILABLE_MODULES: Module[] = [
   { id: "lifecycle", name: "Lifecycle", description: "Access to lifecycle management", enabled: true },
   { id: "team", name: "Team", description: "Access to team management", enabled: true },
   { id: "vault", name: "Vault", description: "Access to password vault", enabled: true },
+  { id: "analytics", name: "Analytics", description: "Access to system analytics and reports", enabled: true },
   { id: "settings", name: "Settings", description: "Access to application settings", enabled: true },
 ]
 
@@ -48,9 +50,15 @@ export function RbacSettings() {
   const [loading, setLoading] = useState(false)
   const [searchingUsers, setSearchingUsers] = useState(false)
   const [selectedGroup, setSelectedGroup] = useState<ADGroup | null>(null)
+
+  // Helper function to check if group is SuperAdministrators
+  const isSuperAdminGroup = (group: ADGroup) => {
+    return group.displayName === 'Nexus-SuperAdministrators'
+  }
   const [isCreateGroupOpen, setIsCreateGroupOpen] = useState(false)
   const [isAddMemberOpen, setIsAddMemberOpen] = useState(false)
   const [isEditRolesOpen, setIsEditRolesOpen] = useState(false)
+  const [isMembersOpen, setIsMembersOpen] = useState(false)
 
   const [newGroupName, setNewGroupName] = useState("")
   const [newGroupDescription, setNewGroupDescription] = useState("")
@@ -139,9 +147,20 @@ export function RbacSettings() {
       
       if (response.ok) {
         await fetchGroups()
+        toast.success('Group deleted successfully')
+      } else {
+        const errorData = await response.json()
+        if (response.status === 403) {
+          toast.error(errorData.error || 'You do not have permission to delete this group')
+        } else if (response.status === 404) {
+          toast.error('Group not found')
+        } else {
+          toast.error(errorData.error || 'Failed to delete group')
+        }
       }
     } catch (error) {
       console.error('Failed to delete group:', error)
+      toast.error('Failed to delete group')
     } finally {
       setLoading(false)
     }
@@ -308,20 +327,39 @@ export function RbacSettings() {
                         <IconUsers className="mr-1 h-3 w-3" />
                         {group.memberCount} members
                       </Badge>
+                      {isSuperAdminGroup(group) && (
+                        <Badge variant="default" className="bg-yellow-500">
+                          System Protected
+                        </Badge>
+                      )}
                       <Button 
                         variant="outline" 
                         size="sm" 
                         onClick={() => {
                           setSelectedGroup(group)
-                          setSelectedModules(group.roles || [])
-                          setIsEditRolesOpen(true)
+                          setIsMembersOpen(true)
                         }}
                       >
-                        <IconEdit className="h-4 w-4" />
+                        <IconUsers className="h-4 w-4" />
                       </Button>
-                      <Button variant="outline" size="sm" onClick={() => deleteGroup(group.id)}>
-                        <IconTrash className="h-4 w-4" />
-                      </Button>
+                      {!isSuperAdminGroup(group) && (
+                        <>
+                          <Button 
+                            variant="outline" 
+                            size="sm" 
+                            onClick={() => {
+                              setSelectedGroup(group)
+                              setSelectedModules(group.roles || [])
+                              setIsEditRolesOpen(true)
+                            }}
+                          >
+                            <IconEdit className="h-4 w-4" />
+                          </Button>
+                          <Button variant="outline" size="sm" onClick={() => deleteGroup(group.id)}>
+                            <IconTrash className="h-4 w-4" />
+                          </Button>
+                        </>
+                      )}
                     </div>
                   </div>
                 </CardHeader>
@@ -330,7 +368,18 @@ export function RbacSettings() {
                     <div>
                       <h5 className="text-sm font-medium mb-2">Assigned Roles</h5>
                       <div className="flex flex-wrap gap-2">
-                        {group.roles?.length > 0 ? (
+                        {isSuperAdminGroup(group) ? (
+                          <>
+                            <Badge variant="default" className="bg-green-500">
+                              All Permissions (Automatic)
+                            </Badge>
+                            {AVAILABLE_MODULES.map((module) => (
+                              <Badge key={module.id} variant="secondary">
+                                {module.name}
+                              </Badge>
+                            ))}
+                          </>
+                        ) : group.roles?.length > 0 ? (
                           group.roles.map((role) => (
                             <Badge key={role} variant="default">
                               {AVAILABLE_MODULES.find(m => m.id === role)?.name || role}
@@ -344,100 +393,20 @@ export function RbacSettings() {
                     <div>
                       <h5 className="text-sm font-medium mb-2">Members</h5>
                       <div className="flex flex-wrap gap-2">
-                        {group.members.map((member) => (
-                          <Badge key={member.id} variant="outline" className="flex items-center gap-1">
-                            {member.displayName}
-                            <button
-                              onClick={() => removeMemberFromGroup(group.id, member.id)}
-                              className="ml-1 text-destructive hover:text-destructive/80"
-                            >
-                              ×
-                            </button>
+                        {group.members.length > 0 ? (
+                          group.members.slice(0, 3).map((member) => (
+                            <Badge key={member.id} variant="outline">
+                              {member.displayName}
+                            </Badge>
+                          ))
+                        ) : (
+                          <Badge variant="outline">No members</Badge>
+                        )}
+                        {group.members.length > 3 && (
+                          <Badge variant="secondary">
+                            +{group.members.length - 3} more
                           </Badge>
-                        ))}
-                        <Dialog open={isAddMemberOpen && selectedGroup?.id === group.id} onOpenChange={(open) => {
-                          setIsAddMemberOpen(open)
-                          if (open) setSelectedGroup(group)
-                        }}>
-                          <DialogTrigger asChild>
-                            <Button variant="outline" size="sm">
-                              <IconPlus className="h-3 w-3" />
-                            </Button>
-                          </DialogTrigger>
-                          <DialogContent>
-                            <DialogHeader>
-                              <DialogTitle>Add Members to {group.displayName}</DialogTitle>
-                              <DialogDescription>
-                                Select users from Active Directory to add to this group.
-                              </DialogDescription>
-                            </DialogHeader>
-                            <div className="grid gap-4 py-4">
-                              <div className="grid gap-2">
-                                <Label htmlFor="user-search">Search Users</Label>
-                                <Input
-                                  id="user-search"
-                                  placeholder="Search by name or email..."
-                                  value={userSearchQuery}
-                                  onChange={(e) => setUserSearchQuery(e.target.value)}
-                                />
-                              </div>
-                              <div className="grid gap-2">
-                                <Label>Select Users</Label>
-                                <div className="max-h-48 overflow-y-auto space-y-2">
-                                  {searchingUsers ? (
-                                    <div className="text-sm text-muted-foreground text-center py-4">
-                                      Searching users...
-                                    </div>
-                                  ) : userSearchQuery.length < 2 ? (
-                                    <div className="text-sm text-muted-foreground text-center py-4">
-                                      Enter at least 2 characters to search for users
-                                    </div>
-                                  ) : users.length === 0 ? (
-                                    <div className="text-sm text-muted-foreground text-center py-4">
-                                      No users found matching your search
-                                    </div>
-                                  ) : (
-                                    users.filter(user => 
-                                      !group.members.some(member => member.id === user.id)
-                                    ).map((user) => (
-                                    <div key={user.id} className="flex items-center space-x-2">
-                                      <Checkbox
-                                        id={user.id}
-                                        checked={selectedUsers.includes(user.id)}
-                                        onCheckedChange={(checked) => {
-                                          if (checked) {
-                                            setSelectedUsers([...selectedUsers, user.id])
-                                          } else {
-                                            setSelectedUsers(selectedUsers.filter(id => id !== user.id))
-                                          }
-                                        }}
-                                      />
-                                      <Label htmlFor={user.id} className="text-sm">
-                                        <div>
-                                          <div className="font-medium">{user.displayName}</div>
-                                          <div className="text-xs text-muted-foreground">{user.userPrincipalName}</div>
-                                        </div>
-                                      </Label>
-                                    </div>
-                                    ))
-                                  )}
-                                </div>
-                              </div>
-                            </div>
-                            <DialogFooter>
-                              <Button variant="outline" onClick={() => {
-                                setIsAddMemberOpen(false)
-                                setSelectedUsers([])
-                                setUserSearchQuery("")
-                              }}>
-                                Cancel
-                              </Button>
-                              <Button onClick={addMembersToGroup} disabled={loading || selectedUsers.length === 0}>
-                                Add Members
-                              </Button>
-                            </DialogFooter>
-                          </DialogContent>
-                        </Dialog>
+                        )}
                       </div>
                     </div>
                   </div>
@@ -491,6 +460,156 @@ export function RbacSettings() {
             </Button>
             <Button onClick={updateGroupRoles} disabled={loading}>
               Update Roles
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+
+      {/* Member Management Dialog */}
+      <Dialog open={isMembersOpen} onOpenChange={setIsMembersOpen}>
+        <DialogContent className="sm:max-w-[600px] max-h-[80vh] overflow-y-auto">
+          <DialogHeader>
+            <DialogTitle>Manage Members - {selectedGroup?.displayName}</DialogTitle>
+            <DialogDescription>
+              Add or remove members from this group.
+            </DialogDescription>
+          </DialogHeader>
+          <div className="space-y-6">
+            {/* Current Members */}
+            <div className="space-y-4">
+              <div className="flex items-center justify-between">
+                <Label className="text-base font-medium">Current Members ({selectedGroup?.members.length || 0})</Label>
+                <Button
+                  variant="outline"
+                  size="sm"
+                  onClick={() => setIsAddMemberOpen(true)}
+                >
+                  <IconPlus className="h-4 w-4 mr-2" />
+                  Add Members
+                </Button>
+              </div>
+              
+              {selectedGroup?.members.length === 0 ? (
+                <div className="text-center py-8 text-muted-foreground border-2 border-dashed rounded-lg">
+                  <IconUsers className="h-8 w-8 mx-auto mb-2 opacity-50" />
+                  <p>No members in this group</p>
+                  <p className="text-sm">Click "Add Members" to get started</p>
+                </div>
+              ) : (
+                <div className="space-y-2 max-h-64 overflow-y-auto">
+                  {selectedGroup?.members.map((member) => (
+                    <div key={member.id} className="flex items-center justify-between p-3 border rounded-lg">
+                      <div className="flex items-center gap-3">
+                        <div className="w-8 h-8 rounded-full bg-primary/10 flex items-center justify-center">
+                          <span className="text-sm font-medium">
+                            {member.displayName.split(' ').map(n => n[0]).join('').substring(0, 2)}
+                          </span>
+                        </div>
+                        <div>
+                          <p className="font-medium">{member.displayName}</p>
+                          <p className="text-sm text-muted-foreground">{member.userPrincipalName}</p>
+                          {member.jobTitle && (
+                            <p className="text-xs text-muted-foreground">{member.jobTitle}</p>
+                          )}
+                        </div>
+                      </div>
+                      <Button
+                        variant="outline"
+                        size="sm"
+                        onClick={() => removeMemberFromGroup(selectedGroup.id, member.id)}
+                        className="text-destructive hover:text-destructive hover:border-destructive"
+                      >
+                        <IconTrash className="h-4 w-4" />
+                      </Button>
+                    </div>
+                  ))}
+                </div>
+              )}
+            </div>
+          </div>
+          <DialogFooter>
+            <Button variant="outline" onClick={() => setIsMembersOpen(false)}>
+              Close
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+
+      {/* Add Members Dialog */}
+      <Dialog open={isAddMemberOpen} onOpenChange={setIsAddMemberOpen}>
+        <DialogContent className="sm:max-w-[500px]">
+          <DialogHeader>
+            <DialogTitle>Add Members to {selectedGroup?.displayName}</DialogTitle>
+            <DialogDescription>
+              Search and select users from Active Directory to add to this group.
+            </DialogDescription>
+          </DialogHeader>
+          <div className="grid gap-4 py-4">
+            <div className="grid gap-2">
+              <Label htmlFor="user-search">Search Users</Label>
+              <Input
+                id="user-search"
+                placeholder="Search by name or email..."
+                value={userSearchQuery}
+                onChange={(e) => setUserSearchQuery(e.target.value)}
+              />
+            </div>
+            <div className="grid gap-2">
+              <Label>Select Users</Label>
+              <div className="max-h-48 overflow-y-auto space-y-2">
+                {searchingUsers ? (
+                  <div className="text-sm text-muted-foreground text-center py-4">
+                    Searching users...
+                  </div>
+                ) : userSearchQuery.length < 2 ? (
+                  <div className="text-sm text-muted-foreground text-center py-4">
+                    Enter at least 2 characters to search for users
+                  </div>
+                ) : users.length === 0 ? (
+                  <div className="text-sm text-muted-foreground text-center py-4">
+                    No users found matching your search
+                  </div>
+                ) : (
+                  users.filter(user => 
+                    !selectedGroup?.members.some(member => member.id === user.id)
+                  ).map((user) => (
+                    <div key={user.id} className="flex items-center space-x-2">
+                      <Checkbox
+                        id={user.id}
+                        checked={selectedUsers.includes(user.id)}
+                        onCheckedChange={(checked) => {
+                          if (checked) {
+                            setSelectedUsers([...selectedUsers, user.id])
+                          } else {
+                            setSelectedUsers(selectedUsers.filter(id => id !== user.id))
+                          }
+                        }}
+                      />
+                      <Label htmlFor={user.id} className="text-sm flex-1">
+                        <div>
+                          <div className="font-medium">{user.displayName}</div>
+                          <div className="text-xs text-muted-foreground">{user.userPrincipalName}</div>
+                          {user.jobTitle && (
+                            <div className="text-xs text-muted-foreground">{user.jobTitle}</div>
+                          )}
+                        </div>
+                      </Label>
+                    </div>
+                  ))
+                )}
+              </div>
+            </div>
+          </div>
+          <DialogFooter>
+            <Button variant="outline" onClick={() => {
+              setIsAddMemberOpen(false)
+              setSelectedUsers([])
+              setUserSearchQuery("")
+            }}>
+              Cancel
+            </Button>
+            <Button onClick={addMembersToGroup} disabled={loading || selectedUsers.length === 0}>
+              Add {selectedUsers.length} Member{selectedUsers.length !== 1 ? 's' : ''}
             </Button>
           </DialogFooter>
         </DialogContent>

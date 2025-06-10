@@ -4,7 +4,7 @@ import { authOptions } from '@/lib/auth'
 import { requireModuleAccess } from '@/lib/rbac'
 import { vaultService } from '@/lib/vault'
 
-export async function GET(request: NextRequest, { params }: { params: { id: string } }) {
+export async function GET(request: NextRequest, { params }: { params: Promise<{ id: string }> }) {
   try {
     await requireModuleAccess('vault')
     
@@ -15,10 +15,11 @@ export async function GET(request: NextRequest, { params }: { params: { id: stri
 
     // Get IP and User Agent for logging
     const forwarded = request.headers.get('x-forwarded-for')
-    const ipAddress = forwarded ? forwarded.split(',')[0] : request.ip
+    const ipAddress = forwarded ? forwarded.split(',')[0] : request.headers.get('x-real-ip') || 'unknown'
     const userAgent = request.headers.get('user-agent')
 
-    const password = await vaultService.getPassword(session.user.email, params.id)
+    const { id } = await params
+    const password = await vaultService.getPassword(session.user.email, id)
     
     // Log access is handled in the service
     
@@ -36,7 +37,7 @@ export async function GET(request: NextRequest, { params }: { params: { id: stri
   }
 }
 
-export async function PUT(request: NextRequest, { params }: { params: { id: string } }) {
+export async function PUT(request: NextRequest, { params }: { params: Promise<{ id: string }> }) {
   try {
     await requireModuleAccess('vault')
     
@@ -46,7 +47,8 @@ export async function PUT(request: NextRequest, { params }: { params: { id: stri
     }
 
     const data = await request.json()
-    const password = await vaultService.updatePassword(session.user.email, params.id, data)
+    const { id } = await params
+    const password = await vaultService.updatePassword(session.user.email, id, data)
     
     return NextResponse.json(password)
 
@@ -62,7 +64,7 @@ export async function PUT(request: NextRequest, { params }: { params: { id: stri
   }
 }
 
-export async function DELETE(request: NextRequest, { params }: { params: { id: string } }) {
+export async function DELETE(request: NextRequest, { params }: { params: Promise<{ id: string }> }) {
   try {
     await requireModuleAccess('vault')
     
@@ -71,7 +73,8 @@ export async function DELETE(request: NextRequest, { params }: { params: { id: s
       return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
     }
 
-    await vaultService.deletePassword(session.user.email, params.id)
+    const { id } = await params
+    await vaultService.deletePassword(session.user.email, id)
     
     return NextResponse.json({ success: true })
 

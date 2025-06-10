@@ -7,7 +7,7 @@ const GRAPH_API_BASE = 'https://graph.microsoft.com/v1.0'
 
 export async function GET(
   request: NextRequest,
-  { params }: { params: { id: string } }
+  { params }: { params: Promise<{ id: string }> }
 ) {
   try {
     const session = await getServerSession(authOptions)
@@ -20,9 +20,11 @@ export async function GET(
       return NextResponse.json({ error: 'No access token' }, { status: 401 })
     }
 
+    const { id } = await params
+    
     // Get group roles from database
     const group = await prisma.group.findUnique({
-      where: { azureId: params.id },
+      where: { azureId: id },
       include: {
         roles: {
           include: {
@@ -47,7 +49,7 @@ export async function GET(
 
 export async function PUT(
   request: NextRequest,
-  { params }: { params: { id: string } }
+  { params }: { params: Promise<{ id: string }> }
 ) {
   try {
     const session = await getServerSession(authOptions)
@@ -61,16 +63,17 @@ export async function PUT(
     }
 
     const { roles } = await request.json()
+    const { id } = await params
 
     // Find or create group in database
     let group = await prisma.group.findUnique({
-      where: { azureId: params.id }
+      where: { azureId: id }
     })
 
     if (!group) {
       // Get group info from Azure AD to create it
       const response = await fetch(
-        `${GRAPH_API_BASE}/groups/${params.id}?$select=id,displayName,description`,
+        `${GRAPH_API_BASE}/groups/${id}?$select=id,displayName,description`,
         {
           headers: {
             'Authorization': `Bearer ${accessToken}`,
@@ -85,6 +88,13 @@ export async function PUT(
 
       const azureGroup = await response.json()
       
+      // Protect SuperAdministrators group from role editing
+      if (azureGroup.displayName === 'Nexus-SuperAdministrators') {
+        return NextResponse.json({ 
+          error: 'Cannot edit SuperAdministrators group roles - this group automatically gets all permissions' 
+        }, { status: 403 })
+      }
+      
       group = await prisma.group.create({
         data: {
           azureId: azureGroup.id,
@@ -92,6 +102,13 @@ export async function PUT(
           description: azureGroup.description || ''
         }
       })
+    } else {
+      // Check if existing group is SuperAdministrators
+      if (group.displayName === 'Nexus-SuperAdministrators') {
+        return NextResponse.json({ 
+          error: 'Cannot edit SuperAdministrators group roles - this group automatically gets all permissions' 
+        }, { status: 403 })
+      }
     }
 
     // Get all roles
@@ -115,7 +132,7 @@ export async function PUT(
     }
 
     return NextResponse.json({ 
-      groupId: params.id,
+      groupId: id,
       groupName: group.displayName,
       roles: roles 
     })

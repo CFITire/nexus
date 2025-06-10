@@ -10,7 +10,7 @@ async function getAccessToken(session: any) {
 
 export async function DELETE(
   request: NextRequest,
-  { params }: { params: { id: string; memberId: string } }
+  { params }: { params: Promise<{ id: string; memberId: string }> }
 ) {
   try {
     const session = await getServerSession(authOptions)
@@ -23,8 +23,7 @@ export async function DELETE(
       return NextResponse.json({ error: 'No access token' }, { status: 401 })
     }
 
-    const groupId = params.id
-    const memberId = params.memberId
+    const { id: groupId, memberId } = await params
 
     // Remove member from the group
     const response = await fetch(`${GRAPH_API_BASE}/groups/${groupId}/members/${memberId}/$ref`, {
@@ -37,7 +36,23 @@ export async function DELETE(
     if (!response.ok) {
       const error = await response.text()
       console.error('Failed to remove member from group:', error)
-      return NextResponse.json({ error: 'Failed to remove member' }, { status: response.status })
+      
+      // Handle specific Azure AD errors
+      if (response.status === 403) {
+        return NextResponse.json({ 
+          error: 'Insufficient permissions to remove members. Please contact your Azure AD administrator.' 
+        }, { status: 403 })
+      }
+      
+      if (response.status === 404) {
+        return NextResponse.json({ 
+          error: 'Member or group not found. They may have already been removed.' 
+        }, { status: 404 })
+      }
+      
+      return NextResponse.json({ 
+        error: 'Failed to remove member. Please try again or contact support.' 
+      }, { status: response.status })
     }
 
     return NextResponse.json({ success: true })

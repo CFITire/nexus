@@ -10,7 +10,7 @@ async function getAccessToken(session: any) {
 
 export async function POST(
   request: NextRequest,
-  { params }: { params: { id: string } }
+  { params }: { params: Promise<{ id: string }> }
 ) {
   try {
     const session = await getServerSession(authOptions)
@@ -24,7 +24,7 @@ export async function POST(
     }
 
     const { userIds } = await request.json()
-    const groupId = params.id
+    const { id: groupId } = await params
 
     // Add members to the group
     const promises = userIds.map(async (userId: string) => {

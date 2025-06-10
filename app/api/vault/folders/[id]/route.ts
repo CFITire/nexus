@@ -4,7 +4,7 @@ import { authOptions } from '@/lib/auth'
 import { requireModuleAccess } from '@/lib/rbac'
 import { vaultService } from '@/lib/vault'
 
-export async function PUT(request: NextRequest, { params }: { params: { id: string } }) {
+export async function PUT(request: NextRequest, { params }: { params: Promise<{ id: string }> }) {
   try {
     await requireModuleAccess('vault')
     
@@ -14,7 +14,8 @@ export async function PUT(request: NextRequest, { params }: { params: { id: stri
     }
 
     const data = await request.json()
-    const folder = await vaultService.updateFolder(session.user.email, params.id, data)
+    const { id } = await params
+    const folder = await vaultService.updateFolder(session.user.email, id, data)
     
     return NextResponse.json(folder)
 
@@ -30,7 +31,7 @@ export async function PUT(request: NextRequest, { params }: { params: { id: stri
   }
 }
 
-export async function DELETE(request: NextRequest, { params }: { params: { id: string } }) {
+export async function DELETE(request: NextRequest, { params }: { params: Promise<{ id: string }> }) {
   try {
     await requireModuleAccess('vault')
     
@@ -39,7 +40,8 @@ export async function DELETE(request: NextRequest, { params }: { params: { id: s
       return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
     }
 
-    await vaultService.deleteFolder(session.user.email, params.id)
+    const { id } = await params
+    await vaultService.deleteFolder(session.user.email, id)
     
     return NextResponse.json({ success: true })
 

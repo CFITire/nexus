@@ -10,7 +10,7 @@ async function getAccessToken(session: any) {
 
 export async function DELETE(
   request: NextRequest,
-  { params }: { params: { id: string } }
+  { params }: { params: Promise<{ id: string }> }
 ) {
   try {
     const session = await getServerSession(authOptions)
@@ -23,7 +23,27 @@ export async function DELETE(
       return NextResponse.json({ error: 'No access token' }, { status: 401 })
     }
 
-    const groupId = params.id
+    const { id: groupId } = await params
+
+    // First, get the group details to check if it's SuperAdministrators
+    const groupResponse = await fetch(`${GRAPH_API_BASE}/groups/${groupId}`, {
+      headers: {
+        'Authorization': `Bearer ${accessToken}`,
+      },
+    })
+
+    if (!groupResponse.ok) {
+      return NextResponse.json({ error: 'Group not found' }, { status: 404 })
+    }
+
+    const groupData = await groupResponse.json()
+    
+    // Protect SuperAdministrators group from deletion
+    if (groupData.displayName === 'Nexus-SuperAdministrators') {
+      return NextResponse.json({ 
+        error: 'Cannot delete SuperAdministrators group - this group is system protected' 
+      }, { status: 403 })
+    }
 
     // Delete the group from Azure AD
     const response = await fetch(`${GRAPH_API_BASE}/groups/${groupId}`, {
@@ -36,7 +56,23 @@ export async function DELETE(
     if (!response.ok) {
       const error = await response.text()
       console.error('Failed to delete group:', error)
-      return NextResponse.json({ error: 'Failed to delete group' }, { status: response.status })
+      
+      // Handle specific Azure AD errors
+      if (response.status === 403) {
+        return NextResponse.json({ 
+          error: 'Insufficient permissions to delete this group. Please contact your Azure AD administrator.' 
+        }, { status: 403 })
+      }
+      
+      if (response.status === 404) {
+        return NextResponse.json({ 
+          error: 'Group not found or already deleted.' 
+        }, { status: 404 })
+      }
+      
+      return NextResponse.json({ 
+        error: 'Failed to delete group. Please try again or contact support.' 
+      }, { status: response.status })
     }
 
     return NextResponse.json({ success: true })

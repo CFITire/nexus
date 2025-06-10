@@ -4,7 +4,7 @@ import { authOptions } from '@/lib/auth'
 import { requireModuleAccess } from '@/lib/rbac'
 import { prisma } from '@/lib/prisma'
 
-export async function POST(request: NextRequest, { params }: { params: { id: string } }) {
+export async function POST(request: NextRequest, { params }: { params: Promise<{ id: string }> }) {
   try {
     await requireModuleAccess('vault')
     
@@ -14,7 +14,8 @@ export async function POST(request: NextRequest, { params }: { params: { id: str
     }
 
     const { sharedWith } = await request.json()
-    const folderId = params.id
+    const { id } = await params
+    const folderId = id
 
     // Check if user has permission to share this folder
     const folder = await prisma.vaultFolder.findUnique({
@@ -26,9 +27,9 @@ export async function POST(request: NextRequest, { params }: { params: { id: str
       return NextResponse.json({ error: 'Folder not found' }, { status: 404 })
     }
 
-    if (folder.createdBy !== session.user.email) {
+    if (folder.createdBy !== session.user!.email) {
       // Check if user has share permission
-      const userShare = folder.shares.find(s => s.sharedWith === session.user.email && s.canShare)
+      const userShare = folder.shares.find((s: any) => s.sharedWith === session.user!.email && s.canShare)
       if (!userShare) {
         return NextResponse.json({ error: 'Access denied' }, { status: 403 })
       }
@@ -45,7 +46,7 @@ export async function POST(request: NextRequest, { params }: { params: { id: str
         data: {
           folderId,
           sharedWith: share.userEmail,
-          sharedBy: session.user.email,
+          sharedBy: session.user!.email,
           canView: share.permissions.find((p: any) => p.type === 'view')?.granted || false,
           canEdit: share.permissions.find((p: any) => p.type === 'edit')?.granted || false,
           canDelete: share.permissions.find((p: any) => p.type === 'delete')?.granted || false,
