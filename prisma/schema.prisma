@@ -51,3 +51,113 @@ model GroupRole {
   @@unique([groupId, roleId])
   @@map("group_roles")
 }
+
+// Vault Models - Password Management
+model VaultFolder {
+  id          String   @id @default(cuid())
+  name        String
+  description String?
+  color       String   @default("#3b82f6")
+  icon        String   @default("folder")
+  parentId    String?
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+  createdBy   String   // User email
+  
+  // Self-referential relationship for nested folders
+  parent   VaultFolder?  @relation("FolderHierarchy", fields: [parentId], references: [id], onDelete: NoAction, onUpdate: NoAction)
+  children VaultFolder[] @relation("FolderHierarchy")
+  
+  // Related passwords
+  passwords PasswordEntry[]
+  
+  // Sharing
+  shares VaultFolderShare[]
+  
+  @@map("vault_folders")
+}
+
+model PasswordEntry {
+  id              String   @id @default(cuid())
+  title           String
+  username        String
+  encryptedPassword String  // Encrypted password - never store plain text
+  url             String?
+  notes           String?
+  category        String
+  tags            String   // JSON array as string
+  isFavorite      Boolean  @default(false)
+  
+  // Folder relationship
+  folderId        String?
+  folder          VaultFolder? @relation(fields: [folderId], references: [id], onDelete: SetNull)
+  
+  // Metadata
+  createdAt       DateTime @default(now())
+  updatedAt       DateTime @updatedAt
+  createdBy       String   // User email
+  lastAccessedAt  DateTime?
+  
+  // Sharing
+  shares          PasswordShare[]
+  
+  // Audit
+  accessLogs      VaultAccessLog[]
+  
+  @@map("password_entries")
+}
+
+model VaultFolderShare {
+  id        String   @id @default(cuid())
+  folderId  String
+  sharedWith String  // User email
+  sharedBy   String  // User email
+  canView    Boolean @default(true)
+  canEdit    Boolean @default(false)
+  canDelete  Boolean @default(false)
+  canShare   Boolean @default(false)
+  canAddPasswords Boolean @default(false)
+  sharedAt   DateTime @default(now())
+  expiresAt  DateTime?
+  
+  folder VaultFolder @relation(fields: [folderId], references: [id], onDelete: Cascade)
+  
+  @@unique([folderId, sharedWith])
+  @@map("vault_folder_shares")
+}
+
+model PasswordShare {
+  id         String   @id @default(cuid())
+  passwordId String
+  sharedWith String   // User email
+  sharedBy   String   // User email
+  canView    Boolean  @default(true)
+  canEdit    Boolean  @default(false)
+  canShare   Boolean  @default(false)
+  sharedAt   DateTime @default(now())
+  expiresAt  DateTime?
+  
+  password PasswordEntry @relation(fields: [passwordId], references: [id], onDelete: Cascade)
+  
+  @@unique([passwordId, sharedWith])
+  @@map("password_shares")
+}
+
+model VaultAccessLog {
+  id         String   @id @default(cuid())
+  passwordId String
+  userId     String   // User email
+  action     String   // VIEW, EDIT, COPY, DELETE, SHARE
+  ipAddress  String?
+  userAgent  String?
+  accessedAt DateTime @default(now())
+  success    Boolean  @default(true)
+  details    String?  // Additional context
+  
+  password PasswordEntry @relation(fields: [passwordId], references: [id], onDelete: Cascade)
+  
+  @@index([passwordId])
+  @@index([userId])
+  @@index([accessedAt])
+  @@map("vault_access_logs")
+}

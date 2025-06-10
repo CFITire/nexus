@@ -21,7 +21,7 @@ export async function getUserPermissions(): Promise<UserPermissions | null> {
       return null
     }
 
-    // Get user's groups from Azure AD
+    // Get user's groups from Azure AD (including vault group)
     const response = await fetch(
       `${GRAPH_API_BASE}/me/memberOf?$select=id,displayName`,
       {

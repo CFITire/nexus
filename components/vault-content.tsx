@@ -9,203 +9,149 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs"
 import { VaultPasswordCard } from "@/components/vault-password-card"
 import { VaultStats } from "@/components/vault-stats"
 import { AddPasswordDialog } from "@/components/add-password-dialog"
+import { EditPasswordDialog } from "@/components/edit-password-dialog"
 import { FolderManagement } from "@/components/folder-management"
 import { FolderDialog } from "@/components/folder-dialog"
 import { ShareFolderDialog } from "@/components/share-folder-dialog"
 import { PasswordEntry, VaultFolder } from "@/lib/types/vault"
+import { useRBAC } from "@/hooks/use-rbac"
+import { toast } from "sonner"
 
-const mockFolders: VaultFolder[] = [
-  {
-    id: "1",
-    name: "Work Accounts",
-    description: "Business and work-related passwords",
-    color: "#3b82f6",
-    icon: "briefcase",
-    createdAt: new Date("2024-01-01"),
-    updatedAt: new Date("2024-01-01"),
-    createdBy: "john.doe@cfi.com",
-    isShared: true,
-    sharedWith: [
-      {
-        userId: "2",
-        userName: "Jane Smith",
-        userEmail: "jane.smith@cfi.com",
-        permissions: [
-          { type: "view", granted: true },
-          { type: "edit", granted: true },
-          { type: "share", granted: false }
-        ],
-        sharedAt: new Date("2024-01-02"),
-        sharedBy: "john.doe@cfi.com"
-      }
-    ],
-    permissions: {
-      canView: true,
-      canEdit: true,
-      canDelete: true,
-      canShare: true,
-      canAddPasswords: true,
-    }
-  },
-  {
-    id: "2",
-    name: "Development",
-    description: "Development servers and tools",
-    color: "#10b981",
-    icon: "code",
-    createdAt: new Date("2024-02-01"),
-    updatedAt: new Date("2024-02-01"),
-    createdBy: "john.doe@cfi.com",
-    isShared: true,
-    sharedWith: [
-      {
-        userId: "3",
-        userName: "Mike Johnson",
-        userEmail: "mike.johnson@cfi.com",
-        permissions: [
-          { type: "view", granted: true },
-          { type: "edit", granted: true },
-          { type: "share", granted: true }
-        ],
-        sharedAt: new Date("2024-02-02"),
-        sharedBy: "john.doe@cfi.com"
-      }
-    ],
-    permissions: {
-      canView: true,
-      canEdit: true,
-      canDelete: true,
-      canShare: true,
-      canAddPasswords: true,
-    }
+// API Functions
+async function fetchFolders(): Promise<VaultFolder[]> {
+  const response = await fetch('/api/vault/folders')
+  if (!response.ok) {
+    throw new Error('Failed to fetch folders')
   }
-]
+  return response.json()
+}
 
-const mockPasswords: PasswordEntry[] = [
-  {
-    id: "1",
-    title: "Business Central Admin",
-    username: "admin@cfi.com",
-    password: "SecurePass123!",
-    url: "https://businesscentral.dynamics.com",
-    notes: "Admin account for Business Central integration",
-    category: "Business Apps",
-    folderId: "1",
-    createdAt: new Date("2024-01-15"),
-    updatedAt: new Date("2024-01-15"),
-    createdBy: "john.doe@cfi.com",
-    lastAccessedAt: new Date("2024-06-07"),
-    isShared: true,
-    sharedWith: [
-      {
-        userId: "2",
-        userName: "Jane Smith",
-        userEmail: "jane.smith@cfi.com",
-        permissions: [
-          { type: "view", granted: true },
-          { type: "edit", granted: false },
-          { type: "share", granted: false }
-        ],
-        sharedAt: new Date("2024-02-01"),
-        sharedBy: "john.doe@cfi.com"
-      }
-    ],
-    tags: ["business", "admin", "critical"],
-    isFavorite: true
-  },
-  {
-    id: "2",
-    title: "Company WiFi",
-    username: "guest",
-    password: "CFI-Guest-2024",
-    url: "",
-    notes: "Guest WiFi password for office visitors",
-    category: "Office",
-    createdAt: new Date("2024-03-01"),
-    updatedAt: new Date("2024-03-01"),
-    createdBy: "it@cfi.com",
-    lastAccessedAt: new Date("2024-06-06"),
-    isShared: true,
-    sharedWith: [
-      {
-        userId: "3",
-        userName: "Mike Johnson",
-        userEmail: "mike.johnson@cfi.com",
-        permissions: [
-          { type: "view", granted: true },
-          { type: "edit", granted: false },
-          { type: "share", granted: true }
-        ],
-        sharedAt: new Date("2024-03-02"),
-        sharedBy: "it@cfi.com"
-      }
-    ],
-    tags: ["wifi", "guest", "office"],
-    isFavorite: false
-  },
-  {
-    id: "3",
-    title: "Shared Development Database",
-    username: "dev_user",
-    password: "DevDB@2024!Secure",
-    url: "db.dev.cfi.com",
-    notes: "Development database credentials for team access",
-    category: "Development",
-    folderId: "2",
-    createdAt: new Date("2024-04-10"),
-    updatedAt: new Date("2024-05-15"),
-    createdBy: "dev.team@cfi.com",
-    lastAccessedAt: new Date("2024-06-05"),
-    isShared: true,
-    sharedWith: [
-      {
-        userId: "4",
-        userName: "Sarah Wilson",
-        userEmail: "sarah.wilson@cfi.com",
-        permissions: [
-          { type: "view", granted: true },
-          { type: "edit", granted: true },
-          { type: "share", granted: false }
-        ],
-        sharedAt: new Date("2024-04-11"),
-        sharedBy: "dev.team@cfi.com"
-      }
-    ],
-    tags: ["database", "development", "team"],
-    isFavorite: true
-  },
-  {
-    id: "4",
-    title: "GitHub Enterprise",
-    username: "cfi-developer",
-    password: "ghp_SecureToken2024!",
-    url: "https://github.com/cfi-org",
-    notes: "Enterprise GitHub access for code repositories",
-    category: "Development",
-    folderId: "2",
-    createdAt: new Date("2024-05-01"),
-    updatedAt: new Date("2024-05-01"),
-    createdBy: "dev.team@cfi.com",
-    lastAccessedAt: new Date("2024-06-08"),
-    isShared: false,
-    sharedWith: [],
-    tags: ["github", "development", "enterprise"],
-    isFavorite: false
+async function fetchPasswords(folderId?: string): Promise<PasswordEntry[]> {
+  const url = folderId ? `/api/vault/passwords?folderId=${folderId}` : '/api/vault/passwords'
+  const response = await fetch(url)
+  if (!response.ok) {
+    throw new Error('Failed to fetch passwords')
   }
-]
+  return response.json()
+}
+
+async function createFolder(data: any): Promise<VaultFolder> {
+  const response = await fetch('/api/vault/folders', {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify(data)
+  })
+  if (!response.ok) {
+    throw new Error('Failed to create folder')
+  }
+  return response.json()
+}
+
+async function updateFolder(id: string, data: any): Promise<VaultFolder> {
+  const response = await fetch(`/api/vault/folders/${id}`, {
+    method: 'PUT',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify(data)
+  })
+  if (!response.ok) {
+    throw new Error('Failed to update folder')
+  }
+  return response.json()
+}
+
+async function deleteFolder(id: string): Promise<void> {
+  const response = await fetch(`/api/vault/folders/${id}`, {
+    method: 'DELETE'
+  })
+  if (!response.ok) {
+    throw new Error('Failed to delete folder')
+  }
+}
+
+async function createPassword(data: any): Promise<PasswordEntry> {
+  const response = await fetch('/api/vault/passwords', {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify(data)
+  })
+  if (!response.ok) {
+    throw new Error('Failed to create password')
+  }
+  return response.json()
+}
+
+async function updatePassword(id: string, data: any): Promise<PasswordEntry> {
+  const response = await fetch(`/api/vault/passwords/${id}`, {
+    method: 'PUT',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify(data)
+  })
+  if (!response.ok) {
+    const errorData = await response.json().catch(() => ({}))
+    throw new Error(errorData.details || 'Failed to update password')
+  }
+  return response.json()
+}
+
+async function deletePassword(id: string): Promise<void> {
+  const response = await fetch(`/api/vault/passwords/${id}`, {
+    method: 'DELETE'
+  })
+  if (!response.ok) {
+    throw new Error('Failed to delete password')
+  }
+}
 
 export function VaultContent() {
-  const [passwords, setPasswords] = useState<PasswordEntry[]>(mockPasswords)
-  const [folders, setFolders] = useState<VaultFolder[]>(mockFolders)
-  const [filteredPasswords, setFilteredPasswords] = useState<PasswordEntry[]>(mockPasswords)
+  const { hasModuleAccess, loading: rbacLoading } = useRBAC()
+  const [passwords, setPasswords] = useState<PasswordEntry[]>([])
+  const [folders, setFolders] = useState<VaultFolder[]>([])
+  const [filteredPasswords, setFilteredPasswords] = useState<PasswordEntry[]>([])
+  const [loading, setLoading] = useState(true)
   const [searchQuery, setSearchQuery] = useState("")
   const [activeTab, setActiveTab] = useState("all")
   const [selectedFolderId, setSelectedFolderId] = useState<string | null>(null)
   const [showAddDialog, setShowAddDialog] = useState(false)
+  const [showEditDialog, setShowEditDialog] = useState(false)
   const [showFolderDialog, setShowFolderDialog] = useState(false)
   const [showShareFolderDialog, setShowShareFolderDialog] = useState(false)
   const [editingFolder, setEditingFolder] = useState<VaultFolder | null>(null)
+  const [editingPassword, setEditingPassword] = useState<PasswordEntry | null>(null)
   const [sharingFolder, setSharingFolder] = useState<VaultFolder | null>(null)
+
+  // Load initial data
+  useEffect(() => {
+    if (rbacLoading) return
+    
+    if (!hasModuleAccess('vault')) {
+      toast.error('Access denied to vault module')
+      setLoading(false)
+      return
+    }
+
+    loadData()
+  }, [rbacLoading]) // Remove hasModuleAccess from dependencies
+
+  const loadData = async () => {
+    try {
+      setLoading(true)
+      console.log('Loading vault data...')
+      const [foldersData, passwordsData] = await Promise.all([
+        fetchFolders(),
+        fetchPasswords()
+      ])
+      console.log('Loaded folders:', foldersData)
+      console.log('Loaded passwords:', passwordsData)
+      setFolders(foldersData)
+      setPasswords(passwordsData)
+      console.log('Vault data loaded successfully')
+    } catch (error) {
+      console.error('Failed to load vault data:', error)
+      toast.error('Failed to load vault data')
+    } finally {
+      setLoading(false)
+    }
+  }
 
   useEffect(() => {
     let filtered = passwords
@@ -248,15 +194,55 @@ export function VaultContent() {
     setFilteredPasswords(filtered)
   }, [passwords, searchQuery, activeTab, selectedFolderId])
 
-  const handleAddPassword = (newPassword: Omit<PasswordEntry, 'id' | 'createdAt' | 'updatedAt'>) => {
-    const password: PasswordEntry = {
-      ...newPassword,
-      id: Date.now().toString(),
-      folderId: selectedFolderId === 'unorganized' ? undefined : selectedFolderId || undefined,
-      createdAt: new Date(),
-      updatedAt: new Date(),
+  const handleAddPassword = async (newPassword: Omit<PasswordEntry, 'id' | 'createdAt' | 'updatedAt' | 'createdBy' | 'isShared' | 'sharedWith'>) => {
+    try {
+      const passwordData = {
+        ...newPassword,
+        folderId: selectedFolderId === 'unorganized' ? undefined : selectedFolderId || undefined,
+      }
+      const password = await createPassword(passwordData)
+      setPasswords([...passwords, password])
+      toast.success('Password created successfully')
+    } catch (error) {
+      console.error('Failed to create password:', error)
+      toast.error('Failed to create password')
     }
-    setPasswords([...passwords, password])
+  }
+
+  const handleEditPassword = (password: PasswordEntry) => {
+    // Check if user can edit this password
+    const canEdit = password.createdBy === 'current.user@cfi.com' || // Owner can always edit (TODO: get actual current user)
+                   password.sharedWith.some(user => 
+                     user.userEmail === 'current.user@cfi.com' && // TODO: get actual current user
+                     user.permissions.some(p => p.type === 'edit' && p.granted)
+                   )
+    
+    if (!canEdit) {
+      toast.error('You do not have permission to edit this password. Please contact your administrator.')
+      return
+    }
+    
+    setEditingPassword(password)
+    setShowEditDialog(true)
+  }
+
+  const handleUpdatePassword = async (updatedPassword: PasswordEntry) => {
+    try {
+      const updated = await updatePassword(updatedPassword.id, updatedPassword)
+      setPasswords(prev => 
+        prev.map(p => p.id === updated.id ? updated : p)
+      )
+      toast.success('Password updated successfully')
+    } catch (error) {
+      console.error('Failed to update password:', error)
+      
+      // Check if it's a permission error
+      if (error instanceof Error && error.message.includes('Access denied')) {
+        toast.error('You do not have permission to edit this password. Please contact your administrator.')
+      } else {
+        toast.error('Failed to update password')
+      }
+    }
   }
 
   const handleCreateFolder = () => {
@@ -269,24 +255,22 @@ export function VaultContent() {
     setShowFolderDialog(true)
   }
 
-  const handleSaveFolder = (folderData: Omit<VaultFolder, 'id' | 'createdAt' | 'updatedAt'>) => {
-    if (editingFolder) {
-      // Edit existing folder
-      const updatedFolder: VaultFolder = {
-        ...editingFolder,
-        ...folderData,
-        updatedAt: new Date()
+  const handleSaveFolder = async (folderData: Omit<VaultFolder, 'id' | 'createdAt' | 'updatedAt' | 'createdBy' | 'isShared' | 'sharedWith' | 'permissions'>) => {
+    try {
+      if (editingFolder) {
+        // Edit existing folder
+        const updatedFolder = await updateFolder(editingFolder.id, folderData)
+        setFolders(prev => prev.map(f => f.id === editingFolder.id ? updatedFolder : f))
+        toast.success('Folder updated successfully')
+      } else {
+        // Create new folder
+        const newFolder = await createFolder(folderData)
+        setFolders([...folders, newFolder])
+        toast.success('Folder created successfully')
       }
-      setFolders(prev => prev.map(f => f.id === editingFolder.id ? updatedFolder : f))
-    } else {
-      // Create new folder
-      const newFolder: VaultFolder = {
-        ...folderData,
-        id: Date.now().toString(),
-        createdAt: new Date(),
-        updatedAt: new Date(),
-      }
-      setFolders([...folders, newFolder])
+    } catch (error) {
+      console.error('Failed to save folder:', error)
+      toast.error('Failed to save folder')
     }
   }
 
@@ -296,15 +280,23 @@ export function VaultContent() {
   }
 
   const handleUpdateFolder = (updatedFolder: VaultFolder) => {
+    // Update local state (sharing is handled by the share dialog directly)
     setFolders(prev => prev.map(f => f.id === updatedFolder.id ? updatedFolder : f))
   }
 
-  const handleDeleteFolder = (folderId: string) => {
-    // Move passwords from this folder to unorganized
-    setPasswords(prev => prev.map(p => p.folderId === folderId ? { ...p, folderId: undefined } : p))
-    setFolders(prev => prev.filter(f => f.id !== folderId))
-    if (selectedFolderId === folderId) {
-      setSelectedFolderId(null)
+  const handleDeleteFolder = async (folderId: string) => {
+    try {
+      await deleteFolder(folderId)
+      // Move passwords from this folder to unorganized
+      setPasswords(prev => prev.map(p => p.folderId === folderId ? { ...p, folderId: undefined } : p))
+      setFolders(prev => prev.filter(f => f.id !== folderId))
+      if (selectedFolderId === folderId) {
+        setSelectedFolderId(null)
+      }
+      toast.success('Folder deleted successfully')
+    } catch (error) {
+      console.error('Failed to delete folder:', error)
+      toast.error('Failed to delete folder')
     }
   }
 
@@ -313,6 +305,30 @@ export function VaultContent() {
     if (selectedFolderId === 'unorganized') return "Unorganized"
     const folder = folders.find(f => f.id === selectedFolderId)
     return folder?.name || "Unknown Folder"
+  }
+
+  // Show loading state
+  if (rbacLoading || loading) {
+    return (
+      <div className="flex flex-1 items-center justify-center p-6">
+        <div className="text-center">
+          <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-primary mx-auto mb-4"></div>
+          <p className="text-muted-foreground">Loading vault...</p>
+        </div>
+      </div>
+    )
+  }
+
+  // Check vault access
+  if (!hasModuleAccess('vault')) {
+    return (
+      <div className="flex flex-1 items-center justify-center p-6">
+        <div className="text-center">
+          <p className="text-muted-foreground mb-2">Access Denied</p>
+          <p className="text-sm text-muted-foreground">You don't have permission to access the vault module.</p>
+        </div>
+      </div>
+    )
   }
 
   return (
@@ -381,19 +397,34 @@ export function VaultContent() {
               </TabsList>
 
               <TabsContent value={activeTab} className="mt-6">
-                <div className="grid gap-4">
+                <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
                   {filteredPasswords.length > 0 ? (
                     filteredPasswords.map((password) => (
                       <VaultPasswordCard
                         key={password.id}
                         password={password}
-                        onUpdate={(updatedPassword) => {
-                          setPasswords(prev => 
-                            prev.map(p => p.id === updatedPassword.id ? updatedPassword : p)
-                          )
+                        onUpdate={async (updatedPassword) => {
+                          try {
+                            const updated = await updatePassword(password.id, updatedPassword)
+                            setPasswords(prev => 
+                              prev.map(p => p.id === updated.id ? updated : p)
+                            )
+                            toast.success('Password updated successfully')
+                          } catch (error) {
+                            console.error('Failed to update password:', error)
+                            toast.error('Failed to update password')
+                          }
                         }}
-                        onDelete={(id) => {
-                          setPasswords(prev => prev.filter(p => p.id !== id))
+                        onEdit={handleEditPassword}
+                        onDelete={async (id) => {
+                          try {
+                            await deletePassword(id)
+                            setPasswords(prev => prev.filter(p => p.id !== id))
+                            toast.success('Password deleted successfully')
+                          } catch (error) {
+                            console.error('Failed to delete password:', error)
+                            toast.error('Failed to delete password')
+                          }
                         }}
                       />
                     ))
@@ -493,6 +524,17 @@ export function VaultContent() {
         onAdd={handleAddPassword}
         folders={folders}
         selectedFolderId={selectedFolderId}
+      />
+
+      <EditPasswordDialog
+        open={showEditDialog}
+        onOpenChange={(open) => {
+          setShowEditDialog(open)
+          if (!open) setEditingPassword(null)
+        }}
+        onUpdate={handleUpdatePassword}
+        password={editingPassword}
+        folders={folders}
       />
 
       <FolderDialog

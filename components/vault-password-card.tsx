@@ -1,7 +1,7 @@
 "use client"
 
 import { useState } from "react"
-import { IconCopy, IconEye, IconEyeOff, IconShare, IconStar, IconStarFilled, IconEdit, IconTrash, IconExternalLink } from "@tabler/icons-react"
+import { IconCopy, IconEye, IconEyeOff, IconShare, IconStar, IconStarFilled, IconEdit, IconTrash, IconExternalLink, IconRocket } from "@tabler/icons-react"
 import { Button } from "@/components/ui/button"
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
 import { Badge } from "@/components/ui/badge"
@@ -13,12 +13,22 @@ import { SharePasswordDialog } from "@/components/share-password-dialog"
 interface VaultPasswordCardProps {
   password: PasswordEntry
   onUpdate: (password: PasswordEntry) => void
-  onDelete: (id: string) => void
+  onEdit: (password: PasswordEntry) => void
+  onDelete: (id: string) => Promise<void>
 }
 
-export function VaultPasswordCard({ password, onUpdate, onDelete }: VaultPasswordCardProps) {
+export function VaultPasswordCard({ password, onUpdate, onEdit, onDelete }: VaultPasswordCardProps) {
   const [showPassword, setShowPassword] = useState(false)
   const [showShareDialog, setShowShareDialog] = useState(false)
+  const [isDeleting, setIsDeleting] = useState(false)
+
+  // Check permissions (TODO: get actual current user instead of hardcoded)
+  const currentUser = 'current.user@cfi.com'
+  const isOwner = password.createdBy === currentUser
+  const userShare = password.sharedWith.find(user => user.userEmail === currentUser)
+  const canEdit = isOwner || (userShare?.permissions.some(p => p.type === 'edit' && p.granted) ?? false)
+  const canShare = isOwner || (userShare?.permissions.some(p => p.type === 'share' && p.granted) ?? false)
+  const canDelete = isOwner // Only owner can delete
 
   const copyToClipboard = async (text: string, type: string) => {
     try {
@@ -38,16 +48,47 @@ export function VaultPasswordCard({ password, onUpdate, onDelete }: VaultPasswor
     })
   }
 
-  const formatDate = (date: Date) => {
+  const formatDate = (date: Date | string | null | undefined) => {
+    if (!date) return 'Unknown'
+    
+    const dateObj = typeof date === 'string' ? new Date(date) : date
+    
+    if (isNaN(dateObj.getTime())) {
+      return 'Invalid date'
+    }
+    
     return new Intl.DateTimeFormat('en-US', {
       month: 'short',
       day: 'numeric',
       year: 'numeric'
-    }).format(date)
+    }).format(dateObj)
   }
 
   const getInitials = (name: string) => {
     return name.split(' ').map(n => n[0]).join('').toUpperCase()
+  }
+
+  const launchAndFill = async () => {
+    if (!password.url) return
+    
+    try {
+      // First copy username to clipboard
+      await navigator.clipboard.writeText(password.username)
+      
+      // Open the URL in a new tab
+      const newWindow = window.open(password.url, '_blank')
+      
+      // Show user instructions
+      alert(`Launched ${password.url}\n\nUsername copied to clipboard: ${password.username}\n\nTo complete login:\n1. Paste username (Ctrl+V)\n2. Click the 🔑 button to copy password\n3. Paste password in password field`)
+      
+      console.log('Launched URL and copied username to clipboard')
+    } catch (err) {
+      console.error('Failed to launch and fill:', err)
+      // Fallback: just open the URL
+      if (password.url) {
+        window.open(password.url, '_blank')
+      }
+    }
   }
 
   return (
@@ -59,19 +100,34 @@ export function VaultPasswordCard({ password, onUpdate, onDelete }: VaultPasswor
               <div className="flex items-center gap-2 mb-1">
                 <CardTitle className="text-lg">{password.title}</CardTitle>
                 {password.url && (
-                  <Tooltip>
-                    <TooltipTrigger asChild>
-                      <Button
-                        variant="ghost"
-                        size="icon"
-                        className="h-6 w-6"
-                        onClick={() => window.open(password.url, '_blank')}
-                      >
-                        <IconExternalLink className="h-3 w-3" />
-                      </Button>
-                    </TooltipTrigger>
-                    <TooltipContent>Open URL</TooltipContent>
-                  </Tooltip>
+                  <>
+                    <Tooltip>
+                      <TooltipTrigger asChild>
+                        <Button
+                          variant="ghost"
+                          size="icon"
+                          className="h-6 w-6"
+                          onClick={launchAndFill}
+                        >
+                          <IconRocket className="h-3 w-3" />
+                        </Button>
+                      </TooltipTrigger>
+                      <TooltipContent>Launch & Fill</TooltipContent>
+                    </Tooltip>
+                    <Tooltip>
+                      <TooltipTrigger asChild>
+                        <Button
+                          variant="ghost"
+                          size="icon"
+                          className="h-6 w-6"
+                          onClick={() => window.open(password.url, '_blank')}
+                        >
+                          <IconExternalLink className="h-3 w-3" />
+                        </Button>
+                      </TooltipTrigger>
+                      <TooltipContent>Open URL</TooltipContent>
+                    </Tooltip>
+                  </>
                 )}
               </div>
               <CardDescription className="flex items-center gap-2">
@@ -101,19 +157,21 @@ export function VaultPasswordCard({ password, onUpdate, onDelete }: VaultPasswor
                   {password.isFavorite ? 'Remove from favorites' : 'Add to favorites'}
                 </TooltipContent>
               </Tooltip>
-              <Tooltip>
-                <TooltipTrigger asChild>
-                  <Button
-                    variant="ghost"
-                    size="icon"
-                    className="h-8 w-8"
-                    onClick={() => setShowShareDialog(true)}
-                  >
-                    <IconShare className="h-4 w-4" />
-                  </Button>
-                </TooltipTrigger>
-                <TooltipContent>Share password</TooltipContent>
-              </Tooltip>
+              {canShare && (
+                <Tooltip>
+                  <TooltipTrigger asChild>
+                    <Button
+                      variant="ghost"
+                      size="icon"
+                      className="h-8 w-8"
+                      onClick={() => setShowShareDialog(true)}
+                    >
+                      <IconShare className="h-4 w-4" />
+                    </Button>
+                  </TooltipTrigger>
+                  <TooltipContent>Share password</TooltipContent>
+                </Tooltip>
+              )}
             </div>
           </div>
         </CardHeader>
@@ -151,7 +209,7 @@ export function VaultPasswordCard({ password, onUpdate, onDelete }: VaultPasswor
                       className="h-6 w-6"
                       onClick={() => copyToClipboard(password.password, 'Password')}
                     >
-                      <IconCopy className="h-3 w-3" />
+                      🔑
                     </Button>
                   </TooltipTrigger>
                   <TooltipContent>Copy password</TooltipContent>
@@ -253,18 +311,41 @@ export function VaultPasswordCard({ password, onUpdate, onDelete }: VaultPasswor
                 <> • Last used {formatDate(password.lastAccessedAt)}</>
               )}
             </span>
-            <div className="flex gap-1 opacity-0 group-hover:opacity-100 transition-opacity">
-              <Button variant="ghost" size="icon" className="h-6 w-6">
-                <IconEdit className="h-3 w-3" />
-              </Button>
-              <Button
-                variant="ghost"
-                size="icon"
-                className="h-6 w-6 hover:text-destructive"
-                onClick={() => onDelete(password.id)}
-              >
-                <IconTrash className="h-3 w-3" />
-              </Button>
+            <div className="flex gap-1">
+              {canEdit && (
+                <Button 
+                  variant="ghost" 
+                  size="icon" 
+                  className="h-6 w-6"
+                  onClick={() => onEdit(password)}
+                  disabled={isDeleting}
+                >
+                  <IconEdit className="h-3 w-3" />
+                </Button>
+              )}
+              {canDelete && (
+                <Button
+                  variant="ghost"
+                  size="icon"
+                  className="h-6 w-6 hover:text-destructive"
+                  onClick={async () => {
+                    if (isDeleting) return
+                    setIsDeleting(true)
+                    try {
+                      await onDelete(password.id)
+                    } finally {
+                      setIsDeleting(false)
+                    }
+                  }}
+                  disabled={isDeleting}
+                >
+                  {isDeleting ? (
+                    <div className="h-3 w-3 animate-spin rounded-full border-2 border-current border-t-transparent" />
+                  ) : (
+                    <IconTrash className="h-3 w-3" />
+                  )}
+                </Button>
+              )}
             </div>
           </div>
         </CardContent>

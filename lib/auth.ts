@@ -78,11 +78,13 @@ export const authOptions: NextAuthOptions = {
       // Initial sign in
       if (account && user) {
         return {
-          ...token,
+          sub: token.sub,
+          name: user.name,
+          email: user.email,
+          picture: user.image,
           accessToken: account.access_token,
           refreshToken: account.refresh_token,
           expiresAt: account.expires_at ? account.expires_at * 1000 : Date.now() + 3600 * 1000,
-          user,
         }
       }
 
@@ -102,16 +104,15 @@ export const authOptions: NextAuthOptions = {
         return null as any
       }
       
+      // Only send essential data to reduce cookie size
       session.accessToken = token.accessToken
-      session.refreshToken = token.refreshToken
-      session.expiresAt = token.expiresAt
       session.error = token.error
       
       return session
     },
   },
   secret: process.env.NEXTAUTH_SECRET,
-  debug: true,
+  debug: false,
   pages: {
     signIn: '/auth/signin',
     error: '/auth/error',

@@ -27,7 +27,7 @@ export interface SharedUser {
 }
 
 export interface SharePermission {
-  type: 'view' | 'edit' | 'share'
+  type: 'view' | 'edit' | 'share' | 'addPasswords'
   granted: boolean
 }
 

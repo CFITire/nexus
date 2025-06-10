@@ -1,7 +1,7 @@
 "use client"
 
 import { useState, useEffect } from "react"
-import { IconTrash, IconFolder, IconLock, IconEye, IconEdit, IconShare } from "@tabler/icons-react"
+import { IconTrash, IconFolder, IconLock, IconEye, IconEdit, IconShare, IconSearch, IconLoader, IconPlus } from "@tabler/icons-react"
 import { Button } from "@/components/ui/button"
 import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from "@/components/ui/dialog"
 import { Input } from "@/components/ui/input"
@@ -11,7 +11,15 @@ import { Avatar, AvatarFallback } from "@/components/ui/avatar"
 import { Badge } from "@/components/ui/badge"
 import { Separator } from "@/components/ui/separator"
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
-import { VaultFolder, SharedUser, TeamMember } from "@/lib/types/vault"
+import { VaultFolder, SharedUser } from "@/lib/types/vault"
+import { toast } from "sonner"
+
+interface ADUser {
+  id: string
+  displayName: string
+  userPrincipalName: string
+  jobTitle?: string
+}
 
 interface ShareFolderDialogProps {
   folder: VaultFolder
@@ -20,31 +28,31 @@ interface ShareFolderDialogProps {
   onUpdate: (folder: VaultFolder) => void
 }
 
-const mockTeamMembers: TeamMember[] = [
-  { id: "1", name: "John Doe", email: "john.doe@cfi.com", role: "Admin", department: "IT" },
-  { id: "2", name: "Jane Smith", email: "jane.smith@cfi.com", role: "Manager", department: "Operations" },
-  { id: "3", name: "Mike Johnson", email: "mike.johnson@cfi.com", role: "Developer", department: "IT" },
-  { id: "4", name: "Sarah Wilson", email: "sarah.wilson@cfi.com", role: "Analyst", department: "Finance" },
-  { id: "5", name: "David Brown", email: "david.brown@cfi.com", role: "Designer", department: "Marketing" },
-  { id: "6", name: "Lisa Garcia", email: "lisa.garcia@cfi.com", role: "HR Manager", department: "HR" },
-  { id: "7", name: "Tom Anderson", email: "tom.anderson@cfi.com", role: "Sales Rep", department: "Sales" },
-]
+// API Functions
+async function searchADUsers(query: string): Promise<ADUser[]> {
+  const params = new URLSearchParams({ search: query })
+  const response = await fetch(`/api/rbac/users?${params}`)
+  if (!response.ok) {
+    throw new Error('Failed to search users')
+  }
+  return response.json()
+}
 
 const permissionTemplates = [
   {
     name: "View Only",
     description: "Can view passwords but not edit or share",
-    permissions: { view: true, edit: false, share: false }
+    permissions: { view: true, edit: false, share: false, addPasswords: false }
   },
   {
     name: "Editor",
-    description: "Can view and edit passwords but not share",
-    permissions: { view: true, edit: true, share: false }
+    description: "Can view, edit and add passwords but not share",
+    permissions: { view: true, edit: true, share: false, addPasswords: true }
   },
   {
     name: "Full Access",
-    description: "Can view, edit, and share passwords",
-    permissions: { view: true, edit: true, share: true }
+    description: "Can view, edit, add and share passwords",
+    permissions: { view: true, edit: true, share: true, addPasswords: true }
   }
 ]
 
@@ -52,43 +60,85 @@ export function ShareFolderDialog({ folder, open, onOpenChange, onUpdate }: Shar
   const [searchQuery, setSearchQuery] = useState("")
   const [sharedUsers, setSharedUsers] = useState<SharedUser[]>(folder.sharedWith)
   const [selectedDepartment, setSelectedDepartment] = useState<string>("all")
+  const [searchResults, setSearchResults] = useState<ADUser[]>([])
+  const [isSearching, setIsSearching] = useState(false)
+  const [searchDebounce, setSearchDebounce] = useState<NodeJS.Timeout | null>(null)
 
   useEffect(() => {
     setSharedUsers(folder.sharedWith)
+    setSearchQuery("")
+    setSearchResults([])
   }, [folder.sharedWith, open])
+
+  // Debounced search for AD users
+  useEffect(() => {
+    if (searchDebounce) {
+      clearTimeout(searchDebounce)
+    }
+
+    if (searchQuery.length >= 2) {
+      const timeout = setTimeout(async () => {
+        try {
+          setIsSearching(true)
+          const results = await searchADUsers(searchQuery)
+          setSearchResults(results)
+        } catch (error) {
+          console.error('Failed to search users:', error)
+          toast.error('Failed to search users')
+          setSearchResults([])
+        } finally {
+          setIsSearching(false)
+        }
+      }, 300)
+      setSearchDebounce(timeout)
+    } else {
+      setSearchResults([])
+      setIsSearching(false)
+    }
+
+    return () => {
+      if (searchDebounce) {
+        clearTimeout(searchDebounce)
+      }
+    }
+  }, [searchQuery])
 
   const getInitials = (name: string) => {
     return name.split(' ').map(n => n[0]).join('').toUpperCase()
   }
 
-  const isUserAlreadyShared = (email: string) => {
-    return sharedUsers.some(user => user.userEmail === email)
+  const isUserAlreadyShared = (userPrincipalName: string) => {
+    return sharedUsers.some(user => user.userEmail === userPrincipalName)
   }
 
-  const addTeamMember = (member: TeamMember, template: typeof permissionTemplates[0]) => {
-    if (isUserAlreadyShared(member.email)) return
+  const addTeamMember = (member: ADUser, template: typeof permissionTemplates[0]) => {
+    if (isUserAlreadyShared(member.userPrincipalName)) return
 
     const newUser: SharedUser = {
       userId: member.id,
-      userName: member.name,
-      userEmail: member.email,
+      userName: member.displayName,
+      userEmail: member.userPrincipalName,
       permissions: [
         { type: 'view', granted: template.permissions.view },
         { type: 'edit', granted: template.permissions.edit },
-        { type: 'share', granted: template.permissions.share }
+        { type: 'share', granted: template.permissions.share },
+        { type: 'addPasswords', granted: template.permissions.addPasswords }
       ],
       sharedAt: new Date(),
-      sharedBy: "current.user@cfi.com"
+      sharedBy: "current.user@cfi.com" // TODO: Get actual current user
     }
 
     setSharedUsers([...sharedUsers, newUser])
+    setSearchQuery("") // Clear search after adding
+    setSearchResults([])
+    toast.success(`${member.displayName} has been added to the folder`)
   }
 
   const removeUser = (userId: string) => {
     setSharedUsers(sharedUsers.filter(user => user.userId !== userId))
   }
 
-  const updatePermission = (userId: string, permissionType: 'view' | 'edit' | 'share', granted: boolean) => {
+  const updatePermission = (userId: string, permissionType: 'view' | 'edit' | 'share' | 'addPasswords', granted: boolean) => {
     setSharedUsers(sharedUsers.map(user => {
       if (user.userId === userId) {
         return {
@@ -112,7 +162,8 @@ export function ShareFolderDialog({ folder, open, onOpenChange, onUpdate }: Shar
           permissions: [
             { type: 'view', granted: template.permissions.view },
             { type: 'edit', granted: template.permissions.edit },
-            { type: 'share', granted: template.permissions.share }
+            { type: 'share', granted: template.permissions.share },
+            { type: 'addPasswords', granted: template.permissions.addPasswords }
           ]
         }
       }
@@ -120,28 +171,42 @@ export function ShareFolderDialog({ folder, open, onOpenChange, onUpdate }: Shar
     }))
   }
 
-  const handleSave = () => {
-    const updatedFolder: VaultFolder = {
-      ...folder,
-      isShared: sharedUsers.length > 0,
-      sharedWith: sharedUsers,
-      updatedAt: new Date()
-    }
+  const handleSave = async () => {
+    try {
+      // Call the sharing API
+      const response = await fetch(`/api/vault/folders/${folder.id}/share`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ sharedWith: sharedUsers })
+      })
 
-    onUpdate(updatedFolder)
-    onOpenChange(false)
+      if (!response.ok) {
+        throw new Error('Failed to save sharing changes')
+      }
+
+      const updatedFolder: VaultFolder = {
+        ...folder,
+        isShared: sharedUsers.length > 0,
+        sharedWith: sharedUsers,
+        updatedAt: new Date()
+      }
+
+      onUpdate(updatedFolder)
+      onOpenChange(false)
+      toast.success('Folder sharing updated successfully')
+    } catch (error) {
+      console.error('Failed to save sharing changes:', error)
+      toast.error('Failed to save sharing changes')
+    }
   }
 
-  const departments = Array.from(new Set(mockTeamMembers.map(m => m.department).filter(Boolean)))
+  const departments = Array.from(new Set(searchResults.map(m => m.jobTitle).filter(Boolean)))
   
-  const filteredMembers = mockTeamMembers.filter(member => {
-    const matchesSearch = member.name.toLowerCase().includes(searchQuery.toLowerCase()) ||
-                         member.email.toLowerCase().includes(searchQuery.toLowerCase()) ||
-                         member.role.toLowerCase().includes(searchQuery.toLowerCase())
-    const matchesDepartment = selectedDepartment === "all" || member.department === selectedDepartment
-    const notAlreadyShared = !isUserAlreadyShared(member.email)
+  const filteredMembers = searchResults.filter(member => {
+    const matchesDepartment = selectedDepartment === "all" || member.jobTitle === selectedDepartment
+    const notAlreadyShared = !isUserAlreadyShared(member.userPrincipalName)
     
-    return matchesSearch && matchesDepartment && notAlreadyShared
+    return matchesDepartment && notAlreadyShared
   })
 
   return (
@@ -158,7 +223,7 @@ export function ShareFolderDialog({ folder, open, onOpenChange, onUpdate }: Shar
             Share "{folder.name}" Folder
           </DialogTitle>
           <DialogDescription>
-            Manage who has access to this folder and all passwords within it. Users will be able to see, edit, or share passwords based on their permissions.
+            Search and add team members from Active Directory. Manage permissions to control who can view, edit, or share passwords in this folder.
           </DialogDescription>
         </DialogHeader>
 
@@ -166,73 +231,106 @@ export function ShareFolderDialog({ folder, open, onOpenChange, onUpdate }: Shar
           {/* Quick Add Team Members */}
           <div className="space-y-4">
             <div className="flex items-center justify-between">
-              <Label className="text-base font-medium">Add Team Members</Label>
+              <Label className="text-base font-medium">Search Active Directory</Label>
               <Badge variant="secondary">{sharedUsers.length} shared</Badge>
             </div>
             
-            <div className="flex gap-2">
-              <Input
-                placeholder="Search by name, email, or role..."
-                value={searchQuery}
-                onChange={(e) => setSearchQuery(e.target.value)}
-                className="flex-1"
-              />
-              <Select value={selectedDepartment} onValueChange={setSelectedDepartment}>
-                <SelectTrigger className="w-40">
-                  <SelectValue />
-                </SelectTrigger>
-                <SelectContent>
-                  <SelectItem value="all">All Departments</SelectItem>
-                  {departments.filter((dept): dept is string => Boolean(dept)).map(dept => (
-                    <SelectItem key={dept} value={dept}>{dept}</SelectItem>
-                  ))}
-                </SelectContent>
-              </Select>
+            <div className="space-y-3">
+              <div className="relative">
+                <IconSearch className="absolute left-3 top-1/2 transform -translate-y-1/2 h-4 w-4 text-muted-foreground" />
+                <Input
+                  placeholder="Search by name or email (min 2 characters)..."
+                  value={searchQuery}
+                  onChange={(e) => setSearchQuery(e.target.value)}
+                  className="pl-10"
+                />
+                {isSearching && (
+                  <IconLoader className="absolute right-3 top-1/2 transform -translate-y-1/2 h-4 w-4 animate-spin text-muted-foreground" />
+                )}
+              </div>
+              
+              {searchResults.length > 0 && departments.length > 0 && (
+                <Select value={selectedDepartment} onValueChange={setSelectedDepartment}>
+                  <SelectTrigger className="w-full">
+                    <SelectValue placeholder="Filter by job title..." />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="all">All Job Titles</SelectItem>
+                    {departments.filter((dept): dept is string => Boolean(dept)).map(dept => (
+                      <SelectItem key={dept} value={dept}>{dept}</SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+              )}
             </div>
 
-            {filteredMembers.length > 0 && (
-              <div className="space-y-2 max-h-48 overflow-y-auto border rounded-lg p-2">
-                {filteredMembers.map((member) => (
-                  <div
-                    key={member.id}
-                    className="flex items-center justify-between p-3 hover:bg-muted rounded-md"
-                  >
-                    <div className="flex items-center gap-3">
-                      <Avatar className="h-8 w-8">
-                        <AvatarFallback className="text-xs">
-                          {getInitials(member.name)}
-                        </AvatarFallback>
-                      </Avatar>
-                      <div>
-                        <p className="font-medium">{member.name}</p>
-                        <div className="flex items-center gap-2 text-xs text-muted-foreground">
-                          <span>{member.email}</span>
-                          <span>•</span>
-                          <span>{member.role}</span>
-                          {member.department && (
-                            <>
-                              <span>•</span>
-                              <span>{member.department}</span>
-                            </>
-                          )}
+            {/* Search Results */}
+            {searchQuery.length >= 2 && (
+              <div className="space-y-2">
+                {isSearching ? (
+                  <div className="flex items-center justify-center py-8 text-muted-foreground">
+                    <IconLoader className="h-5 w-5 animate-spin mr-2" />
+                    Searching Active Directory...
+                  </div>
+                ) : filteredMembers.length > 0 ? (
+                  <div className="space-y-2 max-h-64 overflow-y-auto border rounded-lg">
+                    <div className="p-3 bg-muted/50 border-b text-sm font-medium">
+                      Found {filteredMembers.length} user{filteredMembers.length !== 1 ? 's' : ''}
+                    </div>
+                    {filteredMembers.map((member) => (
+                      <div
+                        key={member.id}
+                        className="flex items-center justify-between p-3 hover:bg-muted/50 border-b last:border-b-0"
+                      >
+                        <div className="flex items-center gap-3 flex-1 min-w-0">
+                          <Avatar className="h-9 w-9 flex-shrink-0">
+                            <AvatarFallback className="text-xs">
+                              {getInitials(member.displayName)}
+                            </AvatarFallback>
+                          </Avatar>
+                          <div className="flex-1 min-w-0">
+                            <p className="font-medium truncate">{member.displayName}</p>
+                            <div className="flex items-center gap-2 text-xs text-muted-foreground">
+                              <span className="truncate">{member.userPrincipalName}</span>
+                              {member.jobTitle && (
+                                <>
+                                  <span>•</span>
+                                  <span className="truncate">{member.jobTitle}</span>
+                                </>
+                              )}
+                            </div>
+                          </div>
+                        </div>
+                        <div className="flex gap-1 flex-shrink-0 ml-2">
+                          {permissionTemplates.map((template) => (
+                            <Button
+                              key={template.name}
+                              variant="outline"
+                              size="sm"
+                              onClick={() => addTeamMember(member, template)}
+                              className="text-xs whitespace-nowrap"
+                              title={template.description}
+                            >
+                              {template.name}
+                            </Button>
+                          ))}
                         </div>
                       </div>
-                    </div>
-                    <div className="flex gap-1">
-                      {permissionTemplates.map((template) => (
-                        <Button
-                          key={template.name}
-                          variant="outline"
-                          size="sm"
-                          onClick={() => addTeamMember(member, template)}
-                          className="text-xs"
-                        >
-                          Add as {template.name}
-                        </Button>
-                      ))}
-                    </div>
+                    ))}
                   </div>
-                ))}
+                ) : searchQuery.length >= 2 && !isSearching ? (
+                  <div className="text-center py-8 text-muted-foreground border rounded-lg border-dashed">
+                    <IconSearch className="h-8 w-8 mx-auto mb-2 opacity-50" />
+                    <p>No users found matching "{searchQuery}"</p>
+                    <p className="text-sm">Try a different search term</p>
+                  </div>
+                ) : null}
+              </div>
+            )}
+
+            {searchQuery.length > 0 && searchQuery.length < 2 && (
+              <div className="text-center py-4 text-muted-foreground text-sm">
+                Type at least 2 characters to search
               </div>
             )}
           </div>
@@ -272,7 +370,8 @@ export function ShareFolderDialog({ folder, open, onOpenChange, onUpdate }: Shar
                           value={permissionTemplates.find(t => 
                             t.permissions.view === user.permissions.find(p => p.type === 'view')?.granted &&
                             t.permissions.edit === user.permissions.find(p => p.type === 'edit')?.granted &&
-                            t.permissions.share === user.permissions.find(p => p.type === 'share')?.granted
+                            t.permissions.share === user.permissions.find(p => p.type === 'share')?.granted &&
+                            t.permissions.addPasswords === user.permissions.find(p => p.type === 'addPasswords')?.granted
                           )?.name || "custom"}
                           onValueChange={(value) => {
                             const template = permissionTemplates.find(t => t.name === value)
@@ -324,12 +423,14 @@ export function ShareFolderDialog({ folder, open, onOpenChange, onUpdate }: Shar
                                 {permission.type === 'view' && <IconEye className="h-3 w-3" />}
                                 {permission.type === 'edit' && <IconEdit className="h-3 w-3" />}
                                 {permission.type === 'share' && <IconShare className="h-3 w-3" />}
-                                {permission.type.charAt(0).toUpperCase() + permission.type.slice(1)}
+                                {permission.type === 'addPasswords' && <IconPlus className="h-3 w-3" />}
+                                {permission.type === 'addPasswords' ? 'Add Passwords' : permission.type.charAt(0).toUpperCase() + permission.type.slice(1)}
                               </Label>
                               <p className="text-xs text-muted-foreground">
                                 {permission.type === 'view' && 'Can view passwords in this folder'}
-                                {permission.type === 'edit' && 'Can edit and add passwords'}
+                                {permission.type === 'edit' && 'Can edit existing passwords'}
                                 {permission.type === 'share' && 'Can share passwords with others'}
+                                {permission.type === 'addPasswords' && 'Can create new passwords in this folder'}
                               </p>
                             </div>
                           </div>
@@ -338,11 +439,16 @@ export function ShareFolderDialog({ folder, open, onOpenChange, onUpdate }: Shar
                     </div>
 
                     <div className="text-xs text-muted-foreground pt-2 border-t">
-                      Shared on {new Intl.DateTimeFormat('en-US', {
-                        month: 'short',
-                        day: 'numeric',
-                        year: 'numeric'
-                      }).format(user.sharedAt)} by {user.sharedBy}
+                      Shared on {(() => {
+                        if (!user.sharedAt) return 'Unknown'
+                        const date = typeof user.sharedAt === 'string' ? new Date(user.sharedAt) : user.sharedAt
+                        if (isNaN(date.getTime())) return 'Invalid date'
+                        return new Intl.DateTimeFormat('en-US', {
+                          month: 'short',
+                          day: 'numeric',
+                          year: 'numeric'
+                        }).format(date)
+                      })()} by {user.sharedBy}
                     </div>
                   </div>
                 ))}

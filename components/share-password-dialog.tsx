@@ -10,7 +10,7 @@ import { Checkbox } from "@/components/ui/checkbox"
 import { Avatar, AvatarFallback } from "@/components/ui/avatar"
 import { Badge } from "@/components/ui/badge"
 import { Separator } from "@/components/ui/separator"
-import { PasswordEntry, SharedUser, SharePermission } from "@/lib/types/vault"
+import { PasswordEntry, SharedUser } from "@/lib/types/vault"
 
 interface SharePasswordDialogProps {
   password: PasswordEntry
@@ -30,7 +30,6 @@ const mockTeamMembers = [
 export function SharePasswordDialog({ password, open, onOpenChange, onUpdate }: SharePasswordDialogProps) {
   const [newUserEmail, setNewUserEmail] = useState("")
   const [sharedUsers, setSharedUsers] = useState<SharedUser[]>(password.sharedWith)
-  const [filteredMembers, setFilteredMembers] = useState(mockTeamMembers)
 
   const getInitials = (name: string) => {
     return name.split(' ').map(n => n[0]).join('').toUpperCase()
@@ -83,7 +82,7 @@ export function SharePasswordDialog({ password, open, onOpenChange, onUpdate }: 
     setSharedUsers(sharedUsers.filter(user => user.userId !== userId))
   }
 
-  const updatePermission = (userId: string, permissionType: 'view' | 'edit' | 'share', granted: boolean) => {
+  const updatePermission = (userId: string, permissionType: 'view' | 'edit' | 'share' | 'addPasswords', granted: boolean) => {
     setSharedUsers(sharedUsers.map(user => {
       if (user.userId === userId) {
         return {
@@ -135,7 +134,7 @@ export function SharePasswordDialog({ password, open, onOpenChange, onUpdate }: 
                 placeholder="Enter email address"
                 value={newUserEmail}
                 onChange={(e) => setNewUserEmail(e.target.value)}
-                onKeyPress={(e) => e.key === 'Enter' && addUserByEmail()}
+                onKeyDown={(e) => e.key === 'Enter' && addUserByEmail()}
               />
               <Button onClick={addUserByEmail} disabled={!newUserEmail || isUserAlreadyShared(newUserEmail)}>
                 <IconPlus className="h-4 w-4" />
@@ -242,11 +241,16 @@ export function SharePasswordDialog({ password, open, onOpenChange, onUpdate }: 
                     </div>
 
                     <div className="text-xs text-muted-foreground">
-                      Shared on {new Intl.DateTimeFormat('en-US', {
-                        month: 'short',
-                        day: 'numeric',
-                        year: 'numeric'
-                      }).format(user.sharedAt)} by {user.sharedBy}
+                      Shared on {(() => {
+                        if (!user.sharedAt) return 'Unknown'
+                        const date = typeof user.sharedAt === 'string' ? new Date(user.sharedAt) : user.sharedAt
+                        if (isNaN(date.getTime())) return 'Invalid date'
+                        return new Intl.DateTimeFormat('en-US', {
+                          month: 'short',
+                          day: 'numeric',
+                          year: 'numeric'
+                        }).format(date)
+                      })()} by {user.sharedBy}
                     </div>
                   </div>
                 ))}
