@@ -1,0 +1,53 @@
+// This is your Prisma schema file,
+// learn more about it in the docs: https://pris.ly/d/prisma-schema
+
+// Looking for ways to speed up your queries, or scale easily with your serverless or edge functions?
+// Try Prisma Accelerate: https://pris.ly/cli/accelerate-init
+
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "sqlserver"
+  url      = env("DATABASE_URL")
+}
+
+// RBAC Models
+model Group {
+  id          String        @id @default(cuid())
+  azureId     String        @unique // Azure AD Group ID
+  displayName String
+  description String?
+  createdAt   DateTime      @default(now())
+  updatedAt   DateTime      @updatedAt
+  roles       GroupRole[]
+  
+  @@map("groups")
+}
+
+model Role {
+  id          String      @id @default(cuid())
+  name        String      @unique // e.g., "dashboard", "inspections"
+  displayName String      // e.g., "Dashboard", "Inspections"
+  description String?
+  createdAt   DateTime    @default(now())
+  updatedAt   DateTime    @updatedAt
+  groups      GroupRole[]
+  
+  @@map("roles")
+}
+
+model GroupRole {
+  id        String   @id @default(cuid())
+  groupId   String
+  roleId    String
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+  
+  group Group @relation(fields: [groupId], references: [id], onDelete: Cascade)
+  role  Role  @relation(fields: [roleId], references: [id], onDelete: Cascade)
+  
+  @@unique([groupId, roleId])
+  @@map("group_roles")
+}

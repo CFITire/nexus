@@ -135,7 +135,7 @@ const chartConfig = {
     color: "var(--primary)",
   },
   closed: {
-    label: "Closed",
+    label: "Completed",
     color: "var(--chart-2)",
   },
 } satisfies ChartConfig
@@ -167,7 +167,7 @@ export function ChartAreaInteractive() {
   return (
     <Card className="@container/card">
       <CardHeader>
-        <CardTitle>Open vs. Closed</CardTitle>
+        <CardTitle>Open vs Completed</CardTitle>
         <CardDescription>
           <span className="hidden @[540px]/card:block">
             Total for the last 3 months

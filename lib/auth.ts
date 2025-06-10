@@ -35,7 +35,7 @@ async function refreshAccessToken(token: JWT): Promise<JWT> {
         client_secret: process.env.AZURE_CLIENT_SECRET!,
         grant_type: "refresh_token",
         refresh_token: token.refreshToken!,
-        scope: "openid profile email User.Read User.Read.All Directory.Read.All",
+        scope: "openid profile email User.Read User.Read.All Directory.Read.All Group.ReadWrite.All GroupMember.ReadWrite.All",
       }),
     })
 
@@ -68,7 +68,7 @@ export const authOptions: NextAuthOptions = {
       tenantId: process.env.AZURE_TENANT_ID!,
       authorization: {
         params: {
-          scope: "openid profile email User.Read User.Read.All Directory.Read.All offline_access"
+          scope: "openid profile email User.Read User.Read.All Directory.Read.All Group.ReadWrite.All GroupMember.ReadWrite.All offline_access"
         }
       }
     }),

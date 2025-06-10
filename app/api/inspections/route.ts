@@ -1,8 +1,12 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { bcClient, mapFormDataToInspectionHeader, mapFormDataToInspectionLine } from '@/lib/business-central'
+import { requireModuleAccess } from '@/lib/rbac'
 
 export async function POST(request: NextRequest) {
   try {
+    // Check RBAC permissions
+    await requireModuleAccess('inspections')
+    
     const body = await request.json()
     const { formData, inspectionType } = body
 
@@ -21,6 +25,7 @@ export async function POST(request: NextRequest) {
     
     // Extract the inspection number from the response
     const inspectionNo = header.no || header.inspectionNo || header.No
+    console.log('Header response:', JSON.stringify(header, null, 2))
     console.log('Using inspection number:', inspectionNo)
     
     if (!inspectionNo) {
@@ -53,6 +58,9 @@ export async function POST(request: NextRequest) {
 
 export async function GET(request: NextRequest) {
   try {
+    // Check RBAC permissions
+    await requireModuleAccess('inspections')
+    
     const { searchParams } = new URL(request.url)
     const inspectionNo = searchParams.get('inspectionNo')
     const filter = searchParams.get('filter')

@@ -326,7 +326,7 @@ export function mapFormDataToInspectionHeader(formData: Record<string, string>, 
   // Create header object using exact BC field names
   const headerData: any = {
     inspectionDate: dateTime.toISOString().split('T')[0],
-    inspectionTime: dateTime.toTimeString().split(' ')[0].substring(0, 8), // Format as HH:MM:SS
+    inspectionTime: dateTime.toTimeString().split(' ')[0], // Format as HH:MM:SS
     inspectorName: formData.inspectorName || '',
     status: 'Open'
   }
