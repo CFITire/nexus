@@ -41,6 +41,11 @@ async function main() {
       name: 'analytics',
       displayName: 'Analytics',
       description: 'Access to system analytics and reports'
+    },
+    {
+      name: 'shipments',
+      displayName: 'Shipments',
+      description: 'Access to shipment management and tracking'
     }
   ]
 

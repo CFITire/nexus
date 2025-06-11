@@ -14,6 +14,7 @@ import {
   IconSearch,
   IconSettings,
   IconUsers,
+  IconTruck,
 } from "@tabler/icons-react"
 import { NavMain } from "@/components/nav-main"
 import { NavSecondary } from "@/components/nav-secondary"
@@ -60,6 +61,11 @@ const data = {
       title: "Team",
       url: "/team",
       icon: IconUsers,
+    },
+    {
+      title: "Shipments",
+      url: "/shipments",
+      icon: IconTruck,
     },
   ],
   navClouds: [
@@ -207,6 +213,14 @@ const data = {
 export function AppSidebar({ ...props }: React.ComponentProps<typeof Sidebar>) {
   const { hasModuleAccess } = useRBAC()
 
+  // Filter main navigation based on permissions
+  const filteredNavMain = data.navMain.filter(item => {
+    if (item.title === "Shipments") {
+      return hasModuleAccess('shipments') || hasModuleAccess('analytics') || hasModuleAccess('admin')
+    }
+    return true // Other nav items are shown by default
+  })
+
   // Filter apps based on permissions
   const filteredApps = data.navApps.filter(app => {
     if (app.title === "Vault") {
@@ -234,7 +248,7 @@ export function AppSidebar({ ...props }: React.ComponentProps<typeof Sidebar>) {
         </SidebarMenu>
       </SidebarHeader>
       <SidebarContent>
-        <NavMain items={data.navMain} />
+        <NavMain items={filteredNavMain} />
         {filteredApps.length > 0 && (
           <SidebarGroup>
             <SidebarGroupLabel>Apps</SidebarGroupLabel>

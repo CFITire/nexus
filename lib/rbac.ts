@@ -90,21 +90,28 @@ export async function getUserPermissions(): Promise<UserPermissions | null> {
   }
 }
 
-export async function hasModuleAccess(moduleId: string): Promise<boolean> {
+export async function hasModuleAccess(moduleId: string | string[]): Promise<boolean> {
   try {
     const permissions = await getUserPermissions()
-    return permissions?.isSuperAdmin || permissions?.modules.includes(moduleId) || false
+    if (permissions?.isSuperAdmin) return true
+    
+    if (Array.isArray(moduleId)) {
+      return moduleId.some(module => permissions?.modules.includes(module)) || false
+    } else {
+      return permissions?.modules.includes(moduleId) || false
+    }
   } catch (error) {
     console.error('Error checking module access:', error)
     return false
   }
 }
 
-export async function requireModuleAccess(moduleId: string) {
+export async function requireModuleAccess(moduleId: string | string[]) {
   const hasAccess = await hasModuleAccess(moduleId)
   
   if (!hasAccess) {
-    throw new Error(`Access denied for module: ${moduleId}`)
+    const modules = Array.isArray(moduleId) ? moduleId.join(', ') : moduleId
+    throw new Error(`Access denied for module(s): ${modules}`)
   }
   
   return true

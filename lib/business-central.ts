@@ -264,6 +264,19 @@ class BusinessCentralClient {
     return this.request('SalesOrder?$select=No,Order_Date,Sell_to_Customer_Name,Salesperson_Code,Status')
   }
 
+  async getSalesOrdersForShipments(): Promise<any> {
+    const fields = [
+      'No', 'Status', 'Completely_Shipped', 'Wharehouse_Shipment_Created',
+      'Ship_to_Address', 'Ship_to_City', 'Ship_to_County', 'Ship_to_Post_Code',
+      'Location_Code', 'Responsibility_Center', 'Order_Date', 'Shipment_Date',
+      'Due_Date', 'Requested_Delivery_Date', 'Promised_Delivery_Date',
+      'Shipping_Agent_Code', 'Shipping_Agent_Service_Code', 'Package_Tracking_No',
+      'Shipment_Method_Code', 'Sell_to_Customer_Name', 'Salesperson_Code'
+    ].join(',')
+    
+    return this.request(`SalesOrder?$select=${fields}&$filter=Status eq 'Released'`)
+  }
+
   async getSalesOrder(soNumber: string): Promise<any> {
     return this.request(`SalesOrder('${soNumber}')?$expand=SalesOrderLines`)
   }
@@ -291,6 +304,90 @@ class BusinessCentralClient {
           { Code: "YARD", Name: "Storage Yard", Address: "789 Storage Lane", City: "Edmonton" },
           { Code: "MOBILE", Name: "Mobile Service Unit", Address: "Various Locations", City: "Edmonton" }
         ]
+      }
+    }
+  }
+
+  // Shipment methods
+  async getShipments(date?: string): Promise<any> {
+    const endpoint = date 
+      ? `Nexus_Shipments?$filter=shipmentDate eq '${date}'`
+      : 'Nexus_Shipments'
+    
+    try {
+      return this.request(endpoint)
+    } catch (error) {
+      // Mock shipment data for development
+      return {
+        value: [
+          {
+            shipmentNo: "SHIP001",
+            shipmentDate: date || "2024-06-11",
+            salesOrderNo: "SO001234",
+            customerName: "ABC Transport",
+            destinationAddress: "456 Delivery St, Calgary, AB",
+            destinationLatitude: 51.0447,
+            destinationLongitude: -114.0719,
+            estimatedDeliveryDate: "2024-06-12",
+            actualDeliveryDate: null,
+            status: "In Transit",
+            trackingNumber: "TRK001234",
+            carrierCode: "UPS",
+            totalWeight: 2500.0,
+            totalValue: 15000.0
+          },
+          {
+            shipmentNo: "SHIP002",
+            shipmentDate: date || "2024-06-11",
+            salesOrderNo: "SO001235",
+            customerName: "XYZ Logistics",
+            destinationAddress: "789 Industrial Ave, Vancouver, BC",
+            destinationLatitude: 49.2827,
+            destinationLongitude: -123.1207,
+            estimatedDeliveryDate: "2024-06-13",
+            actualDeliveryDate: "2024-06-13",
+            status: "Delivered",
+            trackingNumber: "TRK001235",
+            carrierCode: "FedEx",
+            totalWeight: 1800.0,
+            totalValue: 12000.0
+          }
+        ]
+      }
+    }
+  }
+
+  async getShipmentAnalytics(startDate?: string, endDate?: string): Promise<any> {
+    const endpoint = startDate && endDate 
+      ? `Nexus_Shipment_Analytics?$filter=date ge '${startDate}' and date le '${endDate}'`
+      : 'Nexus_Shipment_Analytics'
+    
+    try {
+      return this.request(endpoint)
+    } catch (error) {
+      // Mock analytics data
+      return {
+        value: {
+          totalShipments: 245,
+          onTimeDeliveries: 234,
+          lateDeliveries: 11,
+          onTimePercentage: 95.5,
+          averageDeliveryTime: 2.3,
+          totalValue: 2450000.0,
+          totalWeight: 185000.0,
+          carrierPerformance: [
+            { carrier: "UPS", onTimePercentage: 97.2, totalShipments: 120 },
+            { carrier: "FedEx", onTimePercentage: 94.8, totalShipments: 85 },
+            { carrier: "Purolator", onTimePercentage: 92.5, totalShipments: 40 }
+          ],
+          monthlyTrends: [
+            { month: "Jan", onTimePercentage: 94.2, totalShipments: 198 },
+            { month: "Feb", onTimePercentage: 95.1, totalShipments: 210 },
+            { month: "Mar", onTimePercentage: 96.3, totalShipments: 225 },
+            { month: "Apr", onTimePercentage: 95.8, totalShipments: 232 },
+            { month: "May", onTimePercentage: 95.5, totalShipments: 245 }
+          ]
+        }
       }
     }
   }

@@ -161,3 +161,23 @@ model VaultAccessLog {
   @@index([accessedAt])
   @@map("vault_access_logs")
 }
+
+// Geocoding Cache - For shipment mapping
+model GeocodingCache {
+  id        String   @id @default(cuid())
+  address   String   @unique // Full address string
+  latitude  Decimal  @db.Decimal(10, 8) // Supports up to 8 decimal places for precision
+  longitude Decimal  @db.Decimal(11, 8) // Supports up to 8 decimal places for precision
+  country   String?  // Optional country for filtering
+  city      String?  // Optional city for additional context
+  source    String   @default("azure_maps") // Which geocoding service was used
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+  usageCount Int     @default(1) // Track how many times this address has been requested
+  lastUsed  DateTime @default(now())
+  
+  @@index([address])
+  @@index([createdAt])
+  @@index([lastUsed])
+  @@map("geocoding_cache")
+}
