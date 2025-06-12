@@ -1,9 +1,3 @@
-// This is your Prisma schema file,
-// learn more about it in the docs: https://pris.ly/d/prisma-schema
-
-// Looking for ways to speed up your queries, or scale easily with your serverless or edge functions?
-// Try Prisma Accelerate: https://pris.ly/cli/accelerate-init
-
 generator client {
   provider = "prisma-client-js"
 }
@@ -13,28 +7,101 @@ datasource db {
   url      = env("DATABASE_URL")
 }
 
-// RBAC Models
+model User {
+  id                   String                 @id @default(cuid())
+  email                String                 @unique
+  name                 String?
+  image                String?
+  createdAt            DateTime               @default(now())
+  updatedAt            DateTime               @updatedAt
+  adminImpersonations  ImpersonationSession[] @relation("AdminImpersonations")
+  targetImpersonations ImpersonationSession[] @relation("TargetImpersonations")
+  groups               UserGroup[]
+
+  @@map("users")
+}
+
 model Group {
-  id          String        @id @default(cuid())
-  azureId     String        @unique // Azure AD Group ID
+  id          String            @id @default(cuid())
+  azureId     String            @unique
   displayName String
   description String?
-  createdAt   DateTime      @default(now())
-  updatedAt   DateTime      @updatedAt
+  createdAt   DateTime          @default(now())
+  updatedAt   DateTime          @updatedAt
+  permissions GroupPermission[]
   roles       GroupRole[]
-  
+  users       UserGroup[]
+
   @@map("groups")
+}
+
+model UserGroup {
+  id        String   @id @default(cuid())
+  userId    String
+  groupId   String
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+  group     Group    @relation(fields: [groupId], references: [id], onDelete: Cascade)
+  user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@unique([userId, groupId])
+  @@map("user_groups")
+}
+
+model Permission {
+  id          String            @id @default(cuid())
+  module      String
+  action      String
+  description String?
+  createdAt   DateTime          @default(now())
+  updatedAt   DateTime          @updatedAt
+  groups      GroupPermission[]
+
+  @@unique([module, action])
+  @@map("permissions")
+}
+
+model GroupPermission {
+  id           String     @id @default(cuid())
+  groupId      String
+  permissionId String
+  createdAt    DateTime   @default(now())
+  updatedAt    DateTime   @updatedAt
+  group        Group      @relation(fields: [groupId], references: [id], onDelete: Cascade)
+  permission   Permission @relation(fields: [permissionId], references: [id], onDelete: Cascade)
+
+  @@unique([groupId, permissionId])
+  @@map("group_permissions")
+}
+
+model ImpersonationSession {
+  id           String    @id @default(cuid())
+  adminUserId  String
+  targetUserId String
+  startedAt    DateTime  @default(now())
+  endedAt      DateTime?
+  isActive     Boolean   @default(true)
+  ipAddress    String?
+  userAgent    String?
+  reason       String?
+  adminUser    User      @relation("AdminImpersonations", fields: [adminUserId], references: [id], onUpdate: NoAction)
+  targetUser   User      @relation("TargetImpersonations", fields: [targetUserId], references: [id], onUpdate: NoAction)
+
+  @@index([adminUserId])
+  @@index([targetUserId])
+  @@index([isActive])
+  @@map("impersonation_sessions")
 }
 
 model Role {
   id          String      @id @default(cuid())
-  name        String      @unique // e.g., "dashboard", "inspections"
-  displayName String      // e.g., "Dashboard", "Inspections"
+  name        String      @unique
+  displayName String
   description String?
   createdAt   DateTime    @default(now())
   updatedAt   DateTime    @updatedAt
   groups      GroupRole[]
-  
+
   @@map("roles")
 }
 
@@ -44,138 +111,118 @@ model GroupRole {
   roleId    String
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
-  
-  group Group @relation(fields: [groupId], references: [id], onDelete: Cascade)
-  role  Role  @relation(fields: [roleId], references: [id], onDelete: Cascade)
-  
+  group     Group    @relation(fields: [groupId], references: [id], onDelete: Cascade)
+  role      Role     @relation(fields: [roleId], references: [id], onDelete: Cascade)
+
   @@unique([groupId, roleId])
   @@map("group_roles")
 }
 
-// Vault Models - Password Management
 model VaultFolder {
-  id          String   @id @default(cuid())
+  id          String             @id @default(cuid())
   name        String
   description String?
-  color       String   @default("#3b82f6")
-  icon        String   @default("folder")
+  color       String             @default("#3b82f6")
+  icon        String             @default("folder")
   parentId    String?
-  createdAt   DateTime @default(now())
-  updatedAt   DateTime @updatedAt
-  createdBy   String   // User email
-  
-  // Self-referential relationship for nested folders
-  parent   VaultFolder?  @relation("FolderHierarchy", fields: [parentId], references: [id], onDelete: NoAction, onUpdate: NoAction)
-  children VaultFolder[] @relation("FolderHierarchy")
-  
-  // Related passwords
-  passwords PasswordEntry[]
-  
-  // Sharing
-  shares VaultFolderShare[]
-  
+  createdAt   DateTime           @default(now())
+  updatedAt   DateTime           @updatedAt
+  createdBy   String
+  passwords   PasswordEntry[]
+  shares      VaultFolderShare[]
+  parent      VaultFolder?       @relation("FolderHierarchy", fields: [parentId], references: [id], onDelete: NoAction, onUpdate: NoAction)
+  children    VaultFolder[]      @relation("FolderHierarchy")
+
   @@map("vault_folders")
 }
 
 model PasswordEntry {
-  id              String   @id @default(cuid())
-  title           String
-  username        String
-  encryptedPassword String  // Encrypted password - never store plain text
-  url             String?
-  notes           String?
-  category        String
-  tags            String   // JSON array as string
-  isFavorite      Boolean  @default(false)
-  
-  // Folder relationship
-  folderId        String?
-  folder          VaultFolder? @relation(fields: [folderId], references: [id], onDelete: SetNull)
-  
-  // Metadata
-  createdAt       DateTime @default(now())
-  updatedAt       DateTime @updatedAt
-  createdBy       String   // User email
-  lastAccessedAt  DateTime?
-  
-  // Sharing
-  shares          PasswordShare[]
-  
-  // Audit
-  accessLogs      VaultAccessLog[]
-  
+  id                String           @id @default(cuid())
+  title             String
+  username          String
+  encryptedPassword String
+  url               String?
+  notes             String?
+  category          String
+  tags              String
+  isFavorite        Boolean          @default(false)
+  folderId          String?
+  createdAt         DateTime         @default(now())
+  updatedAt         DateTime         @updatedAt
+  createdBy         String
+  lastAccessedAt    DateTime?
+  folder            VaultFolder?     @relation(fields: [folderId], references: [id])
+  shares            PasswordShare[]
+  accessLogs        VaultAccessLog[]
+
   @@map("password_entries")
 }
 
 model VaultFolderShare {
-  id        String   @id @default(cuid())
-  folderId  String
-  sharedWith String  // User email
-  sharedBy   String  // User email
-  canView    Boolean @default(true)
-  canEdit    Boolean @default(false)
-  canDelete  Boolean @default(false)
-  canShare   Boolean @default(false)
-  canAddPasswords Boolean @default(false)
-  sharedAt   DateTime @default(now())
-  expiresAt  DateTime?
-  
-  folder VaultFolder @relation(fields: [folderId], references: [id], onDelete: Cascade)
-  
+  id              String      @id @default(cuid())
+  folderId        String
+  sharedWith      String
+  sharedBy        String
+  canView         Boolean     @default(true)
+  canEdit         Boolean     @default(false)
+  canDelete       Boolean     @default(false)
+  canShare        Boolean     @default(false)
+  canAddPasswords Boolean     @default(false)
+  sharedAt        DateTime    @default(now())
+  expiresAt       DateTime?
+  folder          VaultFolder @relation(fields: [folderId], references: [id], onDelete: Cascade)
+
   @@unique([folderId, sharedWith])
   @@map("vault_folder_shares")
 }
 
 model PasswordShare {
-  id         String   @id @default(cuid())
+  id         String        @id @default(cuid())
   passwordId String
-  sharedWith String   // User email
-  sharedBy   String   // User email
-  canView    Boolean  @default(true)
-  canEdit    Boolean  @default(false)
-  canShare   Boolean  @default(false)
-  sharedAt   DateTime @default(now())
+  sharedWith String
+  sharedBy   String
+  canView    Boolean       @default(true)
+  canEdit    Boolean       @default(false)
+  canShare   Boolean       @default(false)
+  sharedAt   DateTime      @default(now())
   expiresAt  DateTime?
-  
-  password PasswordEntry @relation(fields: [passwordId], references: [id], onDelete: Cascade)
-  
+  password   PasswordEntry @relation(fields: [passwordId], references: [id], onDelete: Cascade)
+
   @@unique([passwordId, sharedWith])
   @@map("password_shares")
 }
 
 model VaultAccessLog {
-  id         String   @id @default(cuid())
+  id         String        @id @default(cuid())
   passwordId String
-  userId     String   // User email
-  action     String   // VIEW, EDIT, COPY, DELETE, SHARE
+  userId     String
+  action     String
   ipAddress  String?
   userAgent  String?
-  accessedAt DateTime @default(now())
-  success    Boolean  @default(true)
-  details    String?  // Additional context
-  
-  password PasswordEntry @relation(fields: [passwordId], references: [id], onDelete: Cascade)
-  
+  accessedAt DateTime      @default(now())
+  success    Boolean       @default(true)
+  details    String?
+  password   PasswordEntry @relation(fields: [passwordId], references: [id], onDelete: Cascade)
+
   @@index([passwordId])
   @@index([userId])
   @@index([accessedAt])
   @@map("vault_access_logs")
 }
 
-// Geocoding Cache - For shipment mapping
 model GeocodingCache {
-  id        String   @id @default(cuid())
-  address   String   @unique // Full address string
-  latitude  Decimal  @db.Decimal(10, 8) // Supports up to 8 decimal places for precision
-  longitude Decimal  @db.Decimal(11, 8) // Supports up to 8 decimal places for precision
-  country   String?  // Optional country for filtering
-  city      String?  // Optional city for additional context
-  source    String   @default("azure_maps") // Which geocoding service was used
-  createdAt DateTime @default(now())
-  updatedAt DateTime @updatedAt
-  usageCount Int     @default(1) // Track how many times this address has been requested
-  lastUsed  DateTime @default(now())
-  
+  id         String   @id @default(cuid())
+  address    String   @unique
+  latitude   Decimal  @db.Decimal(10, 8)
+  longitude  Decimal  @db.Decimal(11, 8)
+  country    String?
+  city       String?
+  source     String   @default("azure_maps")
+  createdAt  DateTime @default(now())
+  updatedAt  DateTime @updatedAt
+  usageCount Int      @default(1)
+  lastUsed   DateTime @default(now())
+
   @@index([address])
   @@index([createdAt])
   @@index([lastUsed])

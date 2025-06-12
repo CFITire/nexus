@@ -1,8 +1,6 @@
 @import "tailwindcss";
 @import "tw-animate-css";
 
-@custom-variant dark (&:is(.dark *));
-
 @theme inline {
   --color-background: var(--background);
   --color-foreground: var(--foreground);
@@ -100,58 +98,58 @@
 }
 
 .dark {
-  /* Base colors - neutral dark */
-  --background: oklch(0.08 0 0);
-  --foreground: oklch(0.98 0 0);
+  /* Base colors - warm dark inspired by modern apps like Discord, VS Code, and Notion */
+  --background: oklch(0.13 0.008 240);  /* Very subtle blue-grey warmth */
+  --foreground: oklch(0.92 0.005 60);   /* Warm white, not pure white */
   
-  /* Card colors - neutral dark */
-  --card: oklch(0.14 0 0);
-  --card-foreground: oklch(0.98 0 0);
+  /* Card colors - slightly elevated warm surface */
+  --card: oklch(0.17 0.008 240);        /* Warmer elevated surface */
+  --card-foreground: oklch(0.92 0.005 60);
   
-  /* Popover colors - neutral dark */
-  --popover: oklch(0.14 0 0);
-  --popover-foreground: oklch(0.98 0 0);
+  /* Popover colors - elevated and warm */
+  --popover: oklch(0.19 0.008 240);     /* Slightly more elevated than cards */
+  --popover-foreground: oklch(0.92 0.005 60);
   
-  /* Primary colors - your main orange for important elements */
-  --primary: oklch(0.75 0.17 60);
-  --primary-foreground: oklch(0.98 0 0);
+  /* Primary colors - your signature orange, slightly desaturated for dark mode */
+  --primary: oklch(0.72 0.15 55);       /* Slightly warmer and less saturated orange */
+  --primary-foreground: oklch(0.97 0.005 60);
   
   /* Secondary colors - neutral grey */
-  --secondary: oklch(0.2 0 0);
-  --secondary-foreground: oklch(0.98 0 0);
+  --secondary: oklch(0.17 0 0);         /* #262626 converted to OKLCH */
+  --secondary-foreground: oklch(0.90 0 0); /* #e5e5e5 converted to OKLCH */
   
-  /* Muted colors - neutral grey */
-  --muted: oklch(0.18 0 0);
-  --muted-foreground: oklch(0.65 0 0);
+  /* Muted colors - comfortable mid-tone */
+  --muted: oklch(0.20 0.008 240);       /* Warm muted background */
+  --muted-foreground: oklch(0.68 0.008 220); /* Comfortable text contrast */
   
-  /* Accent colors - subtle hover state */
-  --accent: oklch(0.22 0 0);
-  --accent-foreground: oklch(0.98 0 0);
+  /* Accent colors - interactive surfaces */
+  --accent: oklch(0.24 0.010 240);      /* Warm hover state */
+  --accent-foreground: oklch(0.92 0.005 60);
   
-  /* Destructive colors */
-  --destructive: oklch(0.7 0.2 25);
+  /* Destructive colors - warm red */
+  --destructive: oklch(0.68 0.18 20);   /* Warmer red */
   
-  /* Border and input colors - neutral */
-  --border: oklch(0.27 0 0);
-  --input: oklch(0.27 0 0);
-  --ring: oklch(0.75 0.17 60);
+  /* Border and input colors - subtle warm borders */
+  --border: oklch(0.30 0.010 240);      /* Warmer, more visible borders */
+  --input: oklch(0.22 0.008 240);       /* Input background matching secondary */
+  --ring: oklch(0.72 0.15 55);          /* Focus ring matches primary */
   
-  /* Chart colors - adjusted for dark mode */
-  --chart-1: oklch(0.75 0.17 60);   /* main orange */
-  --chart-2: oklch(0.7 0.13 200);   /* complementary blue */
-  --chart-3: oklch(0.75 0.11 120);  /* complementary green */
-  --chart-4: oklch(0.85 0.12 30);   /* warm yellow */
-  --chart-5: oklch(0.65 0.16 300);  /* complementary purple */
+  /* Chart colors - vibrant but harmonious for dark mode */
+  --chart-1: oklch(0.72 0.15 55);       /* Primary orange */
+  --chart-2: oklch(0.68 0.12 220);      /* Cool blue */
+  --chart-3: oklch(0.70 0.10 140);      /* Emerald green */
+  --chart-4: oklch(0.78 0.12 80);       /* Warm yellow */
+  --chart-5: oklch(0.66 0.14 300);      /* Purple */
   
-  /* Sidebar colors - neutral dark */
-  --sidebar: oklch(0.12 0 0);
-  --sidebar-foreground: oklch(0.98 0 0);
-  --sidebar-primary: oklch(0.75 0.17 60);
-  --sidebar-primary-foreground: oklch(0.98 0 0);
-  --sidebar-accent: oklch(0.18 0 0);
-  --sidebar-accent-foreground: oklch(0.98 0 0);
-  --sidebar-border: oklch(0.27 0 0);
-  --sidebar-ring: oklch(0.75 0.17 60);
+  /* Sidebar colors - distinguished but cohesive */
+  --sidebar: oklch(0.15 0.008 240);     /* Slightly different from main background */
+  --sidebar-foreground: oklch(0.90 0.005 60);
+  --sidebar-primary: oklch(0.72 0.15 55);
+  --sidebar-primary-foreground: oklch(0.97 0.005 60);
+  --sidebar-accent: oklch(0.20 0.008 240);
+  --sidebar-accent-foreground: oklch(0.92 0.005 60);
+  --sidebar-border: oklch(0.28 0.010 240);
+  --sidebar-ring: oklch(0.72 0.15 55);
 }
 
 @layer base {

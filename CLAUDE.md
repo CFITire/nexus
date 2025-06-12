@@ -7,6 +7,7 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 CFI Nexus is a Next.js 15 enterprise application for CFI Tire's operations management, featuring:
 - **Inspection Management**: 14 different inspection form types for tire and equipment inspection
 - **Business Central Integration**: ERP integration for sales orders, purchase orders, locations, and shipments
+- **Dataverse CRM Integration**: Customer relationship management with accounts, contacts, and opportunities
 - **RBAC System**: Role-based access control with Azure AD integration and granular permissions
 - **Password Vault**: Encrypted password management with folder organization and sharing capabilities
 - **Analytics Dashboard**: Shipment tracking with Azure Maps integration and delivery performance metrics
@@ -42,6 +43,12 @@ npx prisma studio    # Open Prisma Studio
 - **Mock Data Fallback** when `BC_DISABLE_API=true` for development
 - **Endpoints**: Sales orders, purchase orders, locations, salespersons, inspections, shipments
 - **Custom Tables**: `Nexus_Inspections_Header`, `Nexus_Inspections_Lines`, `Nexus_Shipments`
+
+### Dataverse CRM Integration
+- **API Client** (`lib/dataverse.ts`) with OAuth2 authentication
+- **Mock Data Fallback** when `DV_DISABLE_API=true` for development
+- **Endpoints**: Accounts, contacts, opportunities with OData v4 support
+- **Standard Entities**: Uses standard Dataverse entities for CRM functionality
 
 ### Database Schema (Prisma)
 - **Users & Groups**: RBAC user management
@@ -93,6 +100,14 @@ BC_ENVIRONMENT=
 BC_COMPANY=
 BC_DISABLE_API=true  # For development with mock data
 
+# Dataverse CRM
+DATAVERSE_BASE_URL=https://yourorg.crm.dynamics.com
+DATAVERSE_TENANT_ID=
+DATAVERSE_CLIENT_ID=
+DATAVERSE_CLIENT_SECRET=
+DATAVERSE_ENVIRONMENT=default
+DV_DISABLE_API=true  # For development with mock data
+
 # Database
 DATABASE_URL=
 
@@ -140,3 +155,6 @@ NEXT_PUBLIC_AZURE_MAPS_KEY=
 
 ## Project Memories
 - Anytime we set up a new app or anything that will require RBAC permissions add them to the Nexus-SuperAdministrators group please
+- CRM module has been added with full RBAC protection - requires 'crm' module access
+- SuperAdministrators group has access to all modules including CRM
+- the sidebar and header should show on every  module

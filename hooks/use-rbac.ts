@@ -9,7 +9,17 @@ export interface UserPermissions {
   displayName: string
   groups: string[]
   modules: string[]
+  permissions: {
+    module: string
+    action: string
+  }[]
   isSuperAdmin: boolean
+  isImpersonating?: boolean
+  impersonatedUser?: {
+    id: string
+    name: string
+    email: string
+  }
 }
 
 export function useRBAC() {
@@ -54,6 +64,11 @@ export function useRBAC() {
     return permissions?.groups.includes(groupName) || false
   }
 
+  const hasPermission = (module: string, action: string): boolean => {
+    if (permissions?.isSuperAdmin) return true
+    return permissions?.permissions.some(p => p.module === module && p.action === action) || false
+  }
+
   const isAdmin = (): boolean => {
     return hasGroupAccess('Nexus-Administrators')
   }
@@ -62,12 +77,18 @@ export function useRBAC() {
     return permissions?.isSuperAdmin || false
   }
 
+  const isImpersonating = (): boolean => {
+    return permissions?.isImpersonating || false
+  }
+
   return {
     permissions,
     loading,
     hasModuleAccess,
     hasGroupAccess,
+    hasPermission,
     isAdmin,
-    isSuperAdmin
+    isSuperAdmin,
+    isImpersonating
   }
 }

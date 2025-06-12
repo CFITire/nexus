@@ -41,7 +41,9 @@ const AVAILABLE_MODULES: Module[] = [
   { id: "team", name: "Team", description: "Access to team management", enabled: true },
   { id: "vault", name: "Vault", description: "Access to password vault", enabled: true },
   { id: "analytics", name: "Analytics", description: "Access to system analytics and reports", enabled: true },
+  { id: "crm", name: "CRM", description: "Access to Customer Relationship Management", enabled: true },
   { id: "settings", name: "Settings", description: "Access to application settings", enabled: true },
+  { id: "admin", name: "Admin", description: "Administrative functions including user impersonation", enabled: true },
 ]
 
 export function RbacSettings() {

@@ -143,12 +143,21 @@ const chartConfig = {
 export function ChartAreaInteractive() {
   const isMobile = useIsMobile()
   const [timeRange, setTimeRange] = React.useState("90d")
+  const [isLoading, setIsLoading] = React.useState(true)
 
   React.useEffect(() => {
     if (isMobile) {
       setTimeRange("7d")
     }
   }, [isMobile])
+
+  React.useEffect(() => {
+    // Simulate data loading completion
+    const timer = setTimeout(() => {
+      setIsLoading(false)
+    }, 100)
+    return () => clearTimeout(timer)
+  }, [])
 
   const filteredData = chartData.filter((item) => {
     const date = new Date(item.date)
@@ -163,6 +172,25 @@ export function ChartAreaInteractive() {
     startDate.setDate(startDate.getDate() - daysToSubtract)
     return date >= startDate
   })
+
+  // Safety check for loading and empty data
+  if (isLoading || !filteredData || filteredData.length === 0) {
+    return (
+      <Card className="@container/card">
+        <CardHeader>
+          <CardTitle>Open vs Completed</CardTitle>
+          <CardDescription>
+            {isLoading ? "Loading chart data..." : "No data available"}
+          </CardDescription>
+        </CardHeader>
+        <CardContent className="px-2 pt-4 sm:px-6 sm:pt-6">
+          <div className="flex items-center justify-center h-[250px] text-muted-foreground">
+            {isLoading ? "Loading..." : "No chart data available"}
+          </div>
+        </CardContent>
+      </Card>
+    )
+  }
 
   return (
     <Card className="@container/card">
@@ -213,7 +241,10 @@ export function ChartAreaInteractive() {
           config={chartConfig}
           className="aspect-auto h-[250px] w-full"
         >
-          <AreaChart data={filteredData}>
+          <AreaChart 
+            key={`chart-${timeRange}-${filteredData.length}`}
+            data={filteredData}
+          >
             <defs>
               <linearGradient id="fillOpen" x1="0" y1="0" x2="0" y2="1">
                 <stop
@@ -257,7 +288,6 @@ export function ChartAreaInteractive() {
             />
             <ChartTooltip
               cursor={false}
-              defaultIndex={isMobile ? -1 : 10}
               content={
                 <ChartTooltipContent
                   labelFormatter={(value) => {

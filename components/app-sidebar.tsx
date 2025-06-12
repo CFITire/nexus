@@ -15,6 +15,7 @@ import {
   IconSettings,
   IconUsers,
   IconTruck,
+  IconUsersGroup,
 } from "@tabler/icons-react"
 import { NavMain } from "@/components/nav-main"
 import { NavSecondary } from "@/components/nav-secondary"
@@ -190,6 +191,11 @@ const data = {
       url: "/analytics",
       icon: IconChartBar,
     },
+    {
+      title: "CRM",
+      url: "/crm",
+      icon: IconUsersGroup,
+    },
   ],
   navSecondary: [
     {
@@ -225,6 +231,9 @@ export function AppSidebar({ ...props }: React.ComponentProps<typeof Sidebar>) {
   const filteredApps = data.navApps.filter(app => {
     if (app.title === "Vault") {
       return hasModuleAccess('vault')
+    }
+    if (app.title === "CRM") {
+      return hasModuleAccess('crm')
     }
     return true // Other apps are shown by default
   })
