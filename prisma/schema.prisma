@@ -8,15 +8,13 @@ datasource db {
 }
 
 model User {
-  id                   String                 @id @default(cuid())
-  email                String                 @unique
-  name                 String?
-  image                String?
-  createdAt            DateTime               @default(now())
-  updatedAt            DateTime               @updatedAt
-  adminImpersonations  ImpersonationSession[] @relation("AdminImpersonations")
-  targetImpersonations ImpersonationSession[] @relation("TargetImpersonations")
-  groups               UserGroup[]
+  id        String      @id @default(cuid())
+  email     String      @unique
+  name      String?
+  image     String?
+  createdAt DateTime    @default(now())
+  updatedAt DateTime    @updatedAt
+  groups    UserGroup[]
 
   @@map("users")
 }
@@ -74,24 +72,6 @@ model GroupPermission {
   @@map("group_permissions")
 }
 
-model ImpersonationSession {
-  id           String    @id @default(cuid())
-  adminUserId  String
-  targetUserId String
-  startedAt    DateTime  @default(now())
-  endedAt      DateTime?
-  isActive     Boolean   @default(true)
-  ipAddress    String?
-  userAgent    String?
-  reason       String?
-  adminUser    User      @relation("AdminImpersonations", fields: [adminUserId], references: [id], onUpdate: NoAction)
-  targetUser   User      @relation("TargetImpersonations", fields: [targetUserId], references: [id], onUpdate: NoAction)
-
-  @@index([adminUserId])
-  @@index([targetUserId])
-  @@index([isActive])
-  @@map("impersonation_sessions")
-}
 
 model Role {
   id          String      @id @default(cuid())
@@ -227,4 +207,36 @@ model GeocodingCache {
   @@index([createdAt])
   @@index([lastUsed])
   @@map("geocoding_cache")
+}
+
+// Sales Reporting Views (Read-only)
+model SalesByCustomerYear {
+  soldToCustomerNo   String @map("SoldToCustomerNo")
+  fiscalYear         Int    @map("FiscalYear")
+  sales              Float  @map("Sales")
+  transactionCount   Int    @map("TransactionCount")
+
+  @@unique([soldToCustomerNo, fiscalYear])
+  @@map("vw_SalesByCustomerYear")
+}
+
+model SalesInvoicesByCustomer {
+  soldToCustomerNo     String   @map("SoldToCustomerNo")
+  invoiceNo           String   @map("InvoiceNo")
+  postingDate         DateTime @map("PostingDate")
+  orderDate           DateTime? @map("OrderDate")
+  customerName        String   @map("CustomerName")
+  lineType            String   @map("LineType")
+  itemNo              String?  @map("ItemNo")
+  description         String   @map("Description")
+  quantity            Float    @map("Quantity")
+  unitPrice           Float    @map("UnitPrice")
+  lineAmount          Float    @map("LineAmount")
+  vatAmount           Float    @map("VATAmount")
+  amountIncludingVat  Float    @map("AmountIncludingVAT")
+  currencyCode        String?  @map("CurrencyCode")
+  exchangeRate        Float?   @map("ExchangeRate")
+
+  @@unique([invoiceNo, description])
+  @@map("vw_SalesInvoicesByCustomer")
 }

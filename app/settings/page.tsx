@@ -3,7 +3,6 @@ import { SiteHeader } from "@/components/site-header"
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs"
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
 import { RbacSettings } from "@/components/rbac-settings"
-import { UserManagement } from "@/components/user-management"
 import {
   SidebarInset,
   SidebarProvider,
@@ -30,17 +29,12 @@ export default function SettingsPage() {
           <Tabs defaultValue="rbac" className="space-y-4">
             <TabsList>
               <TabsTrigger value="rbac">RBAC</TabsTrigger>
-              <TabsTrigger value="users">User Management</TabsTrigger>
               <TabsTrigger value="general">General</TabsTrigger>
               <TabsTrigger value="security">Security</TabsTrigger>
             </TabsList>
             
             <TabsContent value="rbac" className="space-y-4">
               <RbacSettings />
-            </TabsContent>
-            
-            <TabsContent value="users" className="space-y-4">
-              <UserManagement />
             </TabsContent>
             
             <TabsContent value="general" className="space-y-4">

@@ -55,12 +55,21 @@ interface ShipmentAnalyticsProps {
 const COLORS = ['#0088FE', '#00C49F', '#FFBB28', '#FF8042', '#8884D8']
 
 export function ShipmentAnalytics({ data }: ShipmentAnalyticsProps) {
-  const onTimeRate = data.onTimePercentage
+  // Add defensive checks for undefined data
+  if (!data) {
+    return (
+      <div className="flex items-center justify-center h-64">
+        <p className="text-muted-foreground">No analytics data available</p>
+      </div>
+    )
+  }
+
+  const onTimeRate = data.onTimePercentage || 0
   const isGoodPerformance = onTimeRate >= 95
 
   const pieData = [
-    { name: 'On Time', value: data.onTimeDeliveries, color: '#10B981' },
-    { name: 'Late', value: data.lateDeliveries, color: '#EF4444' }
+    { name: 'On Time', value: data.onTimeDeliveries || 0, color: '#10B981' },
+    { name: 'Late', value: data.lateDeliveries || 0, color: '#EF4444' }
   ]
 
   return (
@@ -80,7 +89,7 @@ export function ShipmentAnalytics({ data }: ShipmentAnalyticsProps) {
             <Package className="h-4 w-4 text-muted-foreground" />
           </CardHeader>
           <CardContent>
-            <div className="text-2xl font-bold">{data.totalShipments.toLocaleString()}</div>
+            <div className="text-2xl font-bold">{(data.totalShipments || 0).toLocaleString()}</div>
             <p className="text-xs text-muted-foreground">
               This period
             </p>
@@ -93,7 +102,7 @@ export function ShipmentAnalytics({ data }: ShipmentAnalyticsProps) {
             <CheckCircle className="h-4 w-4 text-green-500" />
           </CardHeader>
           <CardContent>
-            <div className="text-2xl font-bold text-green-600">{data.onTimeDeliveries}</div>
+            <div className="text-2xl font-bold text-green-600">{data.onTimeDeliveries || 0}</div>
             <div className="flex items-center space-x-2">
               <Progress value={onTimeRate} className="flex-1" />
               <span className="text-xs text-muted-foreground">{onTimeRate.toFixed(1)}%</span>
@@ -107,9 +116,9 @@ export function ShipmentAnalytics({ data }: ShipmentAnalyticsProps) {
             <XCircle className="h-4 w-4 text-red-500" />
           </CardHeader>
           <CardContent>
-            <div className="text-2xl font-bold text-red-600">{data.lateDeliveries}</div>
+            <div className="text-2xl font-bold text-red-600">{data.lateDeliveries || 0}</div>
             <p className="text-xs text-muted-foreground">
-              {((data.lateDeliveries / data.totalShipments) * 100).toFixed(1)}% of total
+              {(((data.lateDeliveries || 0) / (data.totalShipments || 1)) * 100).toFixed(1)}% of total
             </p>
           </CardContent>
         </Card>
@@ -120,7 +129,7 @@ export function ShipmentAnalytics({ data }: ShipmentAnalyticsProps) {
             <Clock className="h-4 w-4 text-muted-foreground" />
           </CardHeader>
           <CardContent>
-            <div className="text-2xl font-bold">{data.averageDeliveryTime}</div>
+            <div className="text-2xl font-bold">{data.averageDeliveryTime || 0}</div>
             <p className="text-xs text-muted-foreground">
               days average
             </p>
@@ -137,7 +146,7 @@ export function ShipmentAnalytics({ data }: ShipmentAnalyticsProps) {
           </CardHeader>
           <CardContent>
             <ResponsiveContainer width="100%" height={300}>
-              <LineChart data={data.monthlyTrends}>
+              <LineChart data={data.monthlyTrends || []}>
                 <CartesianGrid strokeDasharray="3 3" />
                 <XAxis dataKey="month" />
                 <YAxis domain={[90, 100]} />
@@ -192,7 +201,7 @@ export function ShipmentAnalytics({ data }: ShipmentAnalyticsProps) {
         </CardHeader>
         <CardContent>
           <ResponsiveContainer width="100%" height={300}>
-            <BarChart data={data.carrierPerformance}>
+            <BarChart data={data.carrierPerformance || []}>
               <CartesianGrid strokeDasharray="3 3" />
               <XAxis dataKey="carrier" />
               <YAxis domain={[80, 100]} />
@@ -207,7 +216,7 @@ export function ShipmentAnalytics({ data }: ShipmentAnalyticsProps) {
           </ResponsiveContainer>
           
           <div className="mt-4 space-y-2">
-            {data.carrierPerformance.map((carrier, index) => (
+            {(data.carrierPerformance || []).map((carrier, index) => (
               <div key={carrier.carrier} className="flex items-center justify-between p-2 rounded-lg bg-muted/50">
                 <div className="flex items-center gap-3">
                   <Truck className="h-4 w-4 text-muted-foreground" />
@@ -235,7 +244,7 @@ export function ShipmentAnalytics({ data }: ShipmentAnalyticsProps) {
             <DollarSign className="h-4 w-4 text-muted-foreground" />
           </CardHeader>
           <CardContent>
-            <div className="text-2xl font-bold">${data.totalValue.toLocaleString()}</div>
+            <div className="text-2xl font-bold">${(data.totalValue || 0).toLocaleString()}</div>
             <p className="text-xs text-muted-foreground">
               Across all shipments
             </p>
@@ -248,7 +257,7 @@ export function ShipmentAnalytics({ data }: ShipmentAnalyticsProps) {
             <Package className="h-4 w-4 text-muted-foreground" />
           </CardHeader>
           <CardContent>
-            <div className="text-2xl font-bold">{data.totalWeight.toLocaleString()} kg</div>
+            <div className="text-2xl font-bold">{(data.totalWeight || 0).toLocaleString()} kg</div>
             <p className="text-xs text-muted-foreground">
               Total freight weight
             </p>

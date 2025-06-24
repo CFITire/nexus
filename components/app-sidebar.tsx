@@ -16,6 +16,12 @@ import {
   IconUsers,
   IconTruck,
   IconUsersGroup,
+  IconBuilding,
+  IconUserHeart,
+  IconTarget,
+  IconPhone,
+  IconPhoneCall,
+  IconHistory,
 } from "@tabler/icons-react"
 import { NavMain } from "@/components/nav-main"
 import { NavSecondary } from "@/components/nav-secondary"
@@ -81,7 +87,7 @@ const data = {
           url: "/inspections/2-inch-spacer",
         },
         {
-          title: "Assembly Form",
+          title: "Assembly",
           url: "/inspections/assembly-form",
         },
         {
@@ -109,23 +115,23 @@ const data = {
           url: "/inspections/service-truck-checklist",
         },
         {
-          title: "Used Centers Form",
+          title: "Used Centers",
           url: "/inspections/used-centers-form",
         },
         {
-          title: "Used Hardware Form",
+          title: "Used Hardware",
           url: "/inspections/used-hardware-form",
         },
         {
-          title: "Used Tire Form",
+          title: "Used Tire",
           url: "/inspections/used-tire-form",
         },
         {
-          title: "Used Track Form",
+          title: "Used Track",
           url: "/inspections/used-track-form",
         },
         {
-          title: "Used Wheel Form",
+          title: "Used Wheel",
           url: "/inspections/used-wheel-form",
         },
         {
@@ -182,19 +188,72 @@ const data = {
   ],
   navApps: [
     {
-      title: "Vault",
-      url: "/vault",
-      icon: IconLock,
+      title: "Analytics",
+      icon: IconChartBar,
+      items: [
+        {
+          title: "Dashboard",
+          url: "/analytics",
+          icon: IconDashboard,
+        },
+        {
+          title: "Sales Reports",
+          url: "/sales",
+          icon: IconChartBar,
+        },
+      ],
     },
     {
-      title: "Analytics",
-      url: "/analytics",
-      icon: IconChartBar,
+      title: "COMs",
+      icon: IconPhone,
+      items: [
+        {
+          title: "Dashboard",
+          url: "/communications",
+          icon: IconDashboard,
+        },
+        {
+          title: "Phone",
+          url: "/communications/phone",
+          icon: IconPhoneCall,
+        },
+        {
+          title: "Call History",
+          url: "/communications/history",
+          icon: IconHistory,
+        },
+      ],
     },
     {
       title: "CRM",
-      url: "/crm",
       icon: IconUsersGroup,
+      items: [
+        {
+          title: "Dashboard",
+          url: "/crm",
+          icon: IconDashboard,
+        },
+        {
+          title: "Accounts",
+          url: "/crm/accounts",
+          icon: IconBuilding,
+        },
+        {
+          title: "Contacts",
+          url: "/crm/contacts", 
+          icon: IconUserHeart,
+        },
+        {
+          title: "Leads",
+          url: "/crm/leads",
+          icon: IconTarget,
+        },
+      ],
+    },
+    {
+      title: "Vault",
+      url: "/vault",
+      icon: IconLock,
     },
   ],
   navSecondary: [
@@ -232,8 +291,14 @@ export function AppSidebar({ ...props }: React.ComponentProps<typeof Sidebar>) {
     if (app.title === "Vault") {
       return hasModuleAccess('vault')
     }
+    if (app.title === "Analytics") {
+      return hasModuleAccess('analytics') || hasModuleAccess('admin')
+    }
     if (app.title === "CRM") {
       return hasModuleAccess('crm')
+    }
+    if (app.title === "COMs") {
+      return hasModuleAccess('communications')
     }
     return true // Other apps are shown by default
   })
@@ -265,12 +330,37 @@ export function AppSidebar({ ...props }: React.ComponentProps<typeof Sidebar>) {
               <SidebarMenu>
                 {filteredApps.map((item) => (
                   <SidebarMenuItem key={item.title}>
-                    <SidebarMenuButton tooltip={item.title} asChild>
-                      <a href={item.url}>
-                        {item.icon && <item.icon />}
-                        <span>{item.title}</span>
-                      </a>
-                    </SidebarMenuButton>
+                    {item.items ? (
+                      <Collapsible defaultOpen={false} className="group/collapsible">
+                        <CollapsibleTrigger asChild>
+                          <SidebarMenuButton tooltip={item.title}>
+                            <item.icon />
+                            <span>{item.title}</span>
+                          </SidebarMenuButton>
+                        </CollapsibleTrigger>
+                        <CollapsibleContent>
+                          <SidebarMenuSub>
+                            {item.items.map((subItem) => (
+                              <SidebarMenuSubItem key={subItem.title}>
+                                <SidebarMenuSubButton asChild>
+                                  <a href={subItem.url}>
+                                    <subItem.icon />
+                                    <span>{subItem.title}</span>
+                                  </a>
+                                </SidebarMenuSubButton>
+                              </SidebarMenuSubItem>
+                            ))}
+                          </SidebarMenuSub>
+                        </CollapsibleContent>
+                      </Collapsible>
+                    ) : (
+                      <SidebarMenuButton tooltip={item.title} asChild>
+                        <a href={item.url}>
+                          {item.icon && <item.icon />}
+                          <span>{item.title}</span>
+                        </a>
+                      </SidebarMenuButton>
+                    )}
                   </SidebarMenuItem>
                 ))}
               </SidebarMenu>

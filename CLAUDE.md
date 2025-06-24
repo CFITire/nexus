@@ -44,11 +44,16 @@ npx prisma studio    # Open Prisma Studio
 - **Endpoints**: Sales orders, purchase orders, locations, salespersons, inspections, shipments
 - **Custom Tables**: `Nexus_Inspections_Header`, `Nexus_Inspections_Lines`, `Nexus_Shipments`
 
-### Dataverse CRM Integration
-- **API Client** (`lib/dataverse.ts`) with OAuth2 authentication
+### CRM Integration
+- **CRM Module** accessible at `/crm` with comprehensive dashboard including:
+  - Dashboard tab with overview metrics
+  - Channels, Territories, Segments management
+  - Mapping & Routing capabilities
+  - Reports and analytics
+- **Dedicated Entity Pages**: `/crm/accounts`, `/crm/contacts`, `/crm/leads`
+- **Dataverse Integration** (`lib/dataverse.ts`) with OAuth2 authentication
 - **Mock Data Fallback** when `DV_DISABLE_API=true` for development
-- **Endpoints**: Accounts, contacts, opportunities with OData v4 support
-- **Standard Entities**: Uses standard Dataverse entities for CRM functionality
+- **Navigation**: CRM appears as collapsible sidebar section with sub-items
 
 ### Database Schema (Prisma)
 - **Users & Groups**: RBAC user management
@@ -60,7 +65,12 @@ npx prisma studio    # Open Prisma Studio
 - **UI Components**: shadcn/ui with orange theme customization
 - **Form Templates**: Standardized inspection form component (`components/form-template.tsx`)
 - **Data Tables**: Reusable table component with sorting/filtering
-- **Navigation**: Sidebar-based navigation with permission-based filtering
+- **Navigation**: Sidebar-based navigation with permission-based filtering and collapsible sections:
+  - Main navigation (Dashboard, Lifecycle, Team, Shipments)
+  - Apps section (Vault, Analytics) 
+  - CRM section with sub-items (Dashboard, Accounts, Contacts, Leads)
+  - Inspections collapsible section with 14 inspection types
+  - Secondary navigation (Settings, Help, Search)
 
 ## Key Patterns
 
@@ -116,6 +126,15 @@ ENCRYPTION_KEY=  # For password vault
 
 # Azure Maps
 NEXT_PUBLIC_AZURE_MAPS_KEY=
+
+# FreePBX Communications
+FREEPBX_BASE_URL=https://your-freepbx-server.com
+FREEPBX_USERNAME=
+FREEPBX_PASSWORD=
+FREEPBX_API_TOKEN=  # Optional, preferred over username/password
+FREEPBX_DISABLE_API=true  # For development with mock data
+NEXT_PUBLIC_FREEPBX_DOMAIN=your-freepbx-server.com
+NEXT_PUBLIC_WEBRTC_PASSWORD=  # WebRTC extension password
 ```
 
 ## Important Implementation Details
@@ -134,9 +153,18 @@ NEXT_PUBLIC_AZURE_MAPS_KEY=
 
 ### RBAC Implementation
 - Groups can contain users and inherit permissions
-- Module-based access: `vault`, `inspections`, `analytics`, `admin`
-- Action-based permissions: `create`, `read`, `update`, `delete`, `share`
+- Module-based access: `vault`, `inspections`, `analytics`, `admin`, `crm`, `communications`
+- Action-based permissions: `create`, `read`, `update`, `delete`, `share`, `manage`
 - UI components automatically hide based on permissions
+- Navigation sections filter based on module access (e.g., CRM section only shows if user has 'crm' access)
+
+### Communications Integration
+- **FreePBX Integration**: AMI and REST API support with WebRTC browser calling
+- **WebRTC Phone**: Browser-based calling using SIP.js with STUN/TURN support
+- **Call Management**: Originate, answer, hangup, transfer, and mute functionality
+- **Call History**: Comprehensive call logging with search and export capabilities
+- **Dataverse Integration**: Click-to-call from contacts with automatic activity logging
+- **RBAC Protection**: Module requires 'communications' access with granular permissions
 
 ### Business Central Integration
 - OAuth2 client credentials flow
@@ -156,5 +184,6 @@ NEXT_PUBLIC_AZURE_MAPS_KEY=
 ## Project Memories
 - Anytime we set up a new app or anything that will require RBAC permissions add them to the Nexus-SuperAdministrators group please
 - CRM module has been added with full RBAC protection - requires 'crm' module access
-- SuperAdministrators group has access to all modules including CRM
-- the sidebar and header should show on every  module
+- Communications module has been added with full RBAC protection - requires 'communications' module access
+- SuperAdministrators group has access to all modules including CRM and Communications
+- the sidebar and header should show on every module

@@ -137,6 +137,19 @@ function calculateShipmentAnalytics(salesOrders: any[], startDate?: string, endD
     })
   }
 
+  // Calculate total value and weight
+  const totalValue = filteredOrders.reduce((sum, order) => {
+    const amount = parseFloat(order.Amount) || 0
+    return sum + amount
+  }, 0)
+
+  const totalWeight = filteredOrders.reduce((sum, order) => {
+    // Assuming weight might be in a field like Gross_Weight or similar
+    // Using Amount as a proxy for now since weight field might not be available
+    const weight = parseFloat(order.Gross_Weight) || 0
+    return sum + weight
+  }, 0)
+
   return {
     value: {
       totalShipments,
@@ -146,6 +159,8 @@ function calculateShipmentAnalytics(salesOrders: any[], startDate?: string, endD
       lateDeliveries: shipmentsWithDates.length - onTimeDeliveries,
       onTimePercentage: Math.round(onTimePercentage * 10) / 10,
       averageDeliveryTime: Math.round(averageDeliveryTime * 10) / 10,
+      totalValue: Math.round(totalValue * 100) / 100,
+      totalWeight: Math.round(totalWeight * 100) / 100,
       carrierPerformance,
       monthlyTrends,
       lastUpdated: new Date().toISOString()
