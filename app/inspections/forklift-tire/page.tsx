@@ -1,4 +1,4 @@
-import { FormTemplate } from "@/components/form-template"
+import { TanStackFormTemplate } from "@/components/tanstack-form-template"
 
 export default function ForkliftTireForm() {
   const fields = [
@@ -104,10 +104,13 @@ export default function ForkliftTireForm() {
   ];
 
   return (
-    <FormTemplate
+    <TanStackFormTemplate
       title="Forklift Tire Inspection"
       description="Complete this inspection to document forklift tire details and specifications."
       fields={fields}
+      inspectionType="forklift-tire"
+      enableAutoSave={true}
+      autoSaveInterval={30000}
     />
-  );
+  )
 }

@@ -1,6 +1,6 @@
 'use client'
 
-import { useState, useEffect } from 'react'
+import { useState } from 'react'
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
 import { Button } from '@/components/ui/button'
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs'
@@ -8,6 +8,7 @@ import { ShipmentMap } from '@/components/shipment-map'
 import { ShipmentAnalytics } from '@/components/shipment-analytics'
 import { DateRangePicker } from '@/components/date-range-picker'
 import { useRBAC } from '@/hooks/use-rbac'
+import { useShipments, useShipmentAnalytics, useRefreshBusinessCentralData } from '@/hooks/use-business-central'
 import { RefreshCw, Map, BarChart3, Lock } from 'lucide-react'
 import { format } from 'date-fns'
 
@@ -22,54 +23,34 @@ export function ShipmentsContent() {
     from: new Date(),
     to: new Date()
   })
-  const [shipments, setShipments] = useState([])
-  const [analytics, setAnalytics] = useState(null)
-  const [loading, setLoading] = useState(false)
 
   // Check if user has access to shipments/analytics
   const hasShipmentAccess = hasModuleAccess('shipments') || hasModuleAccess('analytics') || hasModuleAccess('admin')
 
-  const fetchShipments = async (range?: DateRange) => {
-    setLoading(true)
-    try {
-      let url = '/api/business-central/shipments'
-      if (range?.from) {
-        const params = new URLSearchParams()
-        params.append('startDate', format(range.from, 'yyyy-MM-dd'))
-        if (range.to) {
-          params.append('endDate', format(range.to, 'yyyy-MM-dd'))
-        }
-        url += `?${params.toString()}`
-      }
-      
-      const response = await fetch(url)
-      const data = await response.json()
-      console.log('Fetched shipments:', data.value?.length || 0, 'shipments')
-      console.log('Sample shipment:', data.value?.[0])
-      setShipments(data.value || [])
-    } catch (error) {
-      console.error('Error fetching shipments:', error)
-    } finally {
-      setLoading(false)
-    }
-  }
+  // Create filters for API calls
+  const shipmentFilters = dateRange?.from ? {
+    startDate: format(dateRange.from, 'yyyy-MM-dd'),
+    endDate: dateRange.to ? format(dateRange.to, 'yyyy-MM-dd') : undefined
+  } : undefined
 
-  const fetchAnalytics = async () => {
-    try {
-      const response = await fetch('/api/business-central/shipment-analytics')
-      const data = await response.json()
-      setAnalytics(data.value)
-    } catch (error) {
-      console.error('Error fetching analytics:', error)
-    }
-  }
+  // Use TanStack Query hooks (only when user has access)
+  const {
+    data: shipmentsData,
+    isLoading: shipmentsLoading,
+    error: shipmentsError
+  } = useShipments(shipmentFilters, { enabled: hasShipmentAccess })
 
-  useEffect(() => {
-    if (hasShipmentAccess) {
-      fetchShipments(dateRange)
-      fetchAnalytics()
-    }
-  }, [dateRange, hasShipmentAccess])
+  const {
+    data: analyticsData,
+    isLoading: analyticsLoading,
+    error: analyticsError
+  } = useShipmentAnalytics(dateRange, { enabled: hasShipmentAccess })
+
+  const refreshMutation = useRefreshBusinessCentralData()
+
+  // Extract the actual data from the API response
+  const shipments = shipmentsData?.value || []
+  const analytics = analyticsData?.value || null
 
   const handleDateRangeChange = (range: DateRange | undefined) => {
     setDateRange(range)
@@ -77,10 +58,12 @@ export function ShipmentsContent() {
 
   const handleRefresh = () => {
     if (hasShipmentAccess) {
-      fetchShipments(dateRange)
-      fetchAnalytics()
+      refreshMutation.mutate()
     }
   }
+
+  // Combined loading state
+  const loading = shipmentsLoading || analyticsLoading || refreshMutation.isPending
 
   // Show loading state while checking permissions
   if (isLoading) {

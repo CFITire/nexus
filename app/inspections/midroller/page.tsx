@@ -1,4 +1,4 @@
-import { FormTemplate } from "@/components/form-template"
+import { TanStackFormTemplate } from "@/components/tanstack-form-template"
 
 export default function MidrollerForm() {
   const fields = [
@@ -118,10 +118,13 @@ export default function MidrollerForm() {
   ];
 
   return (
-    <FormTemplate
+    <TanStackFormTemplate
       title="Midroller Inspection"
       description="Comprehensive midroller inspection form for track equipment maintenance assessment."
       fields={fields}
+      inspectionType="midroller"
+      enableAutoSave={true}
+      autoSaveInterval={30000}
     />
-  );
+  )
 }

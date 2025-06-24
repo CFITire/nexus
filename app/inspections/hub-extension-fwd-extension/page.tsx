@@ -1,4 +1,4 @@
-import { FormTemplate } from "@/components/form-template"
+import { TanStackFormTemplate } from "@/components/tanstack-form-template"
 
 export default function HubExtensionFwdExtensionForm() {
   const fields = [
@@ -125,10 +125,13 @@ export default function HubExtensionFwdExtensionForm() {
   ];
 
   return (
-    <FormTemplate
+    <TanStackFormTemplate
       title="Hub Extension & FWD Extension Inspection"
       description="Complete this inspection to document hub and forward extension specifications."
       fields={fields}
+      inspectionType="hub-extension-fwd-extension"
+      enableAutoSave={true}
+      autoSaveInterval={30000}
     />
-  );
+  )
 }

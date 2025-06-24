@@ -1,4 +1,4 @@
-import { FormTemplate } from "@/components/form-template"
+import { TanStackFormTemplate } from "@/components/tanstack-form-template"
 
 export default function UsedWheelForm() {
   const fields = [
@@ -265,10 +265,13 @@ export default function UsedWheelForm() {
   ];
 
   return (
-    <FormTemplate
-      title="Used Wheel Form"
+    <TanStackFormTemplate
+      title="Used Wheel"
       description="Comprehensive wheel and disc inspection and condition assessment form."
       fields={fields}
+      inspectionType="used-wheel-form"
+      enableAutoSave={true}
+      autoSaveInterval={30000}
     />
-  );
+  )
 }

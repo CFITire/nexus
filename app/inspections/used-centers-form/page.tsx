@@ -1,4 +1,4 @@
-import { FormTemplate } from "@/components/form-template"
+import { TanStackFormTemplate } from "@/components/tanstack-form-template"
 
 export default function UsedCentersForm() {
   const fields = [
@@ -89,10 +89,13 @@ export default function UsedCentersForm() {
   ];
 
   return (
-    <FormTemplate
-      title="Used Centers Form"
+    <TanStackFormTemplate
+      title="Used Centers"
       description="Specification and documentation form for used center components."
       fields={fields}
+      inspectionType="used-centers-form"
+      enableAutoSave={true}
+      autoSaveInterval={30000}
     />
-  );
+  )
 }

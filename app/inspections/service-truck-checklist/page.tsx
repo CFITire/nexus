@@ -1,4 +1,4 @@
-import { FormTemplate } from "@/components/form-template"
+import { TanStackFormTemplate } from "@/components/tanstack-form-template"
 
 export default function ServiceTruckChecklistForm() {
   const fields = [
@@ -90,10 +90,13 @@ export default function ServiceTruckChecklistForm() {
   ];
 
   return (
-    <FormTemplate
+    <TanStackFormTemplate
       title="Service Truck Checklist"
       description="Daily service truck inspection checklist for technicians."
       fields={fields}
+      inspectionType="service-truck-checklist"
+      enableAutoSave={true}
+      autoSaveInterval={30000}
     />
-  );
+  )
 }

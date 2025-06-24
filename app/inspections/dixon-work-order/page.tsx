@@ -1,4 +1,4 @@
-import { FormTemplate } from "@/components/form-template"
+import { TanStackFormTemplate } from "@/components/tanstack-form-template"
 
 export default function DixonWorkOrderPage() {
   const fields = [
@@ -159,10 +159,14 @@ export default function DixonWorkOrderPage() {
   ]
 
   return (
-    <FormTemplate
+    <TanStackFormTemplate
       title="Dixon Work Order Inspection"
       description="Create and document Dixon equipment service work order details."
       fields={fields}
+      inspectionType="dixon-work-order"
+      enableAutoSave={true}
+      autoSaveInterval={30000}
     />
   )
 }
+

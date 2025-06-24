@@ -1,4 +1,4 @@
-import { FormTemplate } from "@/components/form-template"
+import { TanStackFormTemplate } from "@/components/tanstack-form-template"
 
 export default function WeightBracketWheelWeightsForm() {
   const fields = [
@@ -83,10 +83,13 @@ export default function WeightBracketWheelWeightsForm() {
   ];
 
   return (
-    <FormTemplate
+    <TanStackFormTemplate
       title="Weight Bracket / Wheel Weights"
       description="Inspection and documentation form for weight brackets and wheel weights."
       fields={fields}
+      inspectionType="weight-bracket-wheel-weights"
+      enableAutoSave={true}
+      autoSaveInterval={30000}
     />
-  );
+  )
 }

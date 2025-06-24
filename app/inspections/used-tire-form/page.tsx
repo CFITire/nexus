@@ -1,4 +1,4 @@
-import { FormTemplate } from "@/components/form-template"
+import { TanStackFormTemplate } from "@/components/tanstack-form-template"
 
 export default function UsedTireForm() {
   const fields = [
@@ -245,10 +245,13 @@ export default function UsedTireForm() {
   ];
 
   return (
-    <FormTemplate
-      title="Used Tire Form"
+    <TanStackFormTemplate
+      title="Used Tire"
       description="Comprehensive tire inspection and documentation form."
       fields={fields}
+      inspectionType="used-tire-form"
+      enableAutoSave={true}
+      autoSaveInterval={30000}
     />
-  );
+  )
 }

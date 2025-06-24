@@ -3,7 +3,7 @@ import { getServerSession } from 'next-auth'
 import { authOptions } from '@/lib/auth'
 import { requireModuleAccess } from '@/lib/rbac'
 
-export async function GET(request: NextRequest) {
+export async function GET() {
   try {
     await requireModuleAccess('analytics')
     
@@ -12,11 +12,11 @@ export async function GET(request: NextRequest) {
       return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
     }
 
-    const { searchParams } = new URL(request.url)
-    const timeRange = searchParams.get('range') || '7d'
+    // const { searchParams } = new URL(request.url)
+    // const timeRange = searchParams.get('range') || '7d'
 
     // TODO: Replace with actual analytics data collection
-    // For now, return mock data
+    // For now, return mock data (timeRange support will be added when real analytics are implemented)
     const analyticsData = {
       overview: {
         totalUsers: 125,

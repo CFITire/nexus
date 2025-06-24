@@ -21,6 +21,20 @@ export async function getUserPermissions(): Promise<UserPermissions | null> {
       return null
     }
 
+    // In development, provide fallback permissions
+    if (process.env.NODE_ENV === 'development') {
+      // Check for default development permissions
+      console.log('🔧 Development mode: Using fallback permissions')
+      return {
+        userId: session.user.email,
+        email: session.user.email,
+        displayName: session.user.name || '',
+        groups: ['Nexus-SuperAdministrators'],
+        modules: ['dashboard', 'inspections', 'lifecycle', 'team', 'vault', 'settings', 'analytics', 'shipments', 'crm', 'communications'],
+        isSuperAdmin: true
+      }
+    }
+
     // Get user's groups from Azure AD (including vault group)
     const response = await fetch(
       `${GRAPH_API_BASE}/me/memberOf?$select=id,displayName`,
@@ -34,6 +48,17 @@ export async function getUserPermissions(): Promise<UserPermissions | null> {
 
     if (!response.ok) {
       console.error('Failed to fetch user groups:', await response.text())
+      // Fallback for development
+      if (process.env.NODE_ENV === 'development') {
+        return {
+          userId: session.user.email,
+          email: session.user.email,
+          displayName: session.user.name || '',
+          groups: ['Nexus-Users'],
+          modules: ['dashboard', 'inspections', 'vault'],
+          isSuperAdmin: false
+        }
+      }
       return null
     }
 
@@ -48,20 +73,44 @@ export async function getUserPermissions(): Promise<UserPermissions | null> {
     const isSuperAdmin = nexusGroups.includes('Nexus-SuperAdministrators')
 
     // Get modules from database based on group memberships
-    const storedGroups = await prisma.group.findMany({
-      where: {
-        azureId: {
-          in: azureGroups.map((group: any) => group.id)
-        }
-      },
-      include: {
-        roles: {
-          include: {
-            role: true
+    let storedGroups = []
+    try {
+      storedGroups = await prisma.group.findMany({
+        where: {
+          azureId: {
+            in: azureGroups.map((group: any) => group.id)
+          }
+        },
+        include: {
+          roles: {
+            include: {
+              role: true
+            }
           }
         }
+      })
+    } catch (dbError) {
+      console.error('Database error fetching groups:', dbError)
+      // Fallback permissions in case of DB issues
+      if (isSuperAdmin || process.env.NODE_ENV === 'development') {
+        return {
+          userId: session.user.email,
+          email: session.user.email,
+          displayName: session.user.name || '',
+          groups: nexusGroups,
+          modules: ['dashboard', 'inspections', 'lifecycle', 'team', 'vault', 'settings', 'analytics', 'shipments', 'crm', 'communications'],
+          isSuperAdmin: true
+        }
       }
-    })
+      return {
+        userId: session.user.email,
+        email: session.user.email,
+        displayName: session.user.name || '',
+        groups: nexusGroups,
+        modules: ['dashboard'],
+        isSuperAdmin: false
+      }
+    }
 
     let modules = storedGroups.reduce((acc: string[], group: { roles: { role: { name: string } }[] }) => {
       const groupModules = group.roles.map((gr: { role: { name: string } }) => gr.role.name)
@@ -70,10 +119,16 @@ export async function getUserPermissions(): Promise<UserPermissions | null> {
 
     // Super admins get access to all modules
     if (isSuperAdmin) {
-      const allRoles = await prisma.role.findMany({
-        select: { name: true }
-      })
-      modules = allRoles.map((role: { name: string }) => role.name)
+      try {
+        const allRoles = await prisma.role.findMany({
+          select: { name: true }
+        })
+        modules = allRoles.map((role: { name: string }) => role.name)
+      } catch (dbError) {
+        console.error('Database error fetching roles:', dbError)
+        // Fallback to all modules for super admins
+        modules = ['dashboard', 'inspections', 'lifecycle', 'team', 'vault', 'settings', 'analytics', 'shipments', 'crm', 'communications']
+      }
     }
 
     return {
@@ -86,6 +141,18 @@ export async function getUserPermissions(): Promise<UserPermissions | null> {
     }
   } catch (error) {
     console.error('Error getting user permissions:', error)
+    // Final fallback for any authentication errors
+    const session = await getServerSession(authOptions)
+    if (session?.user?.email && process.env.NODE_ENV === 'development') {
+      return {
+        userId: session.user.email,
+        email: session.user.email,
+        displayName: session.user.name || '',
+        groups: ['Nexus-Users'],
+        modules: ['dashboard', 'inspections', 'vault'],
+        isSuperAdmin: false
+      }
+    }
     return null
   }
 }
@@ -93,6 +160,12 @@ export async function getUserPermissions(): Promise<UserPermissions | null> {
 export async function hasModuleAccess(moduleId: string | string[]): Promise<boolean> {
   try {
     const permissions = await getUserPermissions()
+    
+    // In development, allow access if we have any permissions object
+    if (process.env.NODE_ENV === 'development' && permissions) {
+      return true
+    }
+    
     if (permissions?.isSuperAdmin) return true
     
     if (Array.isArray(moduleId)) {
@@ -102,6 +175,11 @@ export async function hasModuleAccess(moduleId: string | string[]): Promise<bool
     }
   } catch (error) {
     console.error('Error checking module access:', error)
+    // In development, be permissive for access issues
+    if (process.env.NODE_ENV === 'development') {
+      console.log('🔧 Development mode: Allowing access due to error')
+      return true
+    }
     return false
   }
 }
@@ -111,6 +189,13 @@ export async function requireModuleAccess(moduleId: string | string[]) {
   
   if (!hasAccess) {
     const modules = Array.isArray(moduleId) ? moduleId.join(', ') : moduleId
+    
+    // In development, be more informative but still allow access
+    if (process.env.NODE_ENV === 'development') {
+      console.warn(`⚠️ Access would be denied for module(s): ${modules} in production`)
+      return true
+    }
+    
     throw new Error(`Access denied for module(s): ${modules}`)
   }
   

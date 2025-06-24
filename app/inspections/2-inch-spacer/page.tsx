@@ -1,4 +1,4 @@
-import { FormTemplate } from "@/components/form-template"
+import { TanStackFormTemplate } from "@/components/tanstack-form-template"
 
 export default function TwoInchSpacerForm() {
   const fields = [
@@ -102,10 +102,14 @@ export default function TwoInchSpacerForm() {
   ];
 
   return (
-    <FormTemplate
+    <TanStackFormTemplate
       title='2" Spacer Inspection'
       description="Complete this inspection to document 2-inch spacer inspection and selection."
       fields={fields}
+      inspectionType="2-inch-spacer"
+      enableAutoSave={true}
+      autoSaveInterval={30000}
     />
   );
 }
+

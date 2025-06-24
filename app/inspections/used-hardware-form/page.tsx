@@ -1,4 +1,4 @@
-import { FormTemplate } from "@/components/form-template"
+import { TanStackFormTemplate } from "@/components/tanstack-form-template"
 
 export default function UsedHardwareForm() {
   const fields = [
@@ -146,10 +146,13 @@ export default function UsedHardwareForm() {
   ];
 
   return (
-    <FormTemplate
-      title="Used Hardware Form"
+    <TanStackFormTemplate
+      title="Used Hardware"
       description="Inspection and documentation form for used hardware components."
       fields={fields}
+      inspectionType="used-hardware-form"
+      enableAutoSave={true}
+      autoSaveInterval={30000}
     />
-  );
+  )
 }

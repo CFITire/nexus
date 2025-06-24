@@ -1,6 +1,7 @@
-import { FormTemplate } from "@/components/form-template"
+import { TanStackFormTemplate } from "@/components/tanstack-form-template"
 
 export default function AssemblyFormPage() {
+  // Enhanced field definitions with validation
   const fields = [
     // Basic Information
     {
@@ -58,7 +59,8 @@ export default function AssemblyFormPage() {
       label: "Quantity",
       type: "number" as const,
       placeholder: "Enter quantity",
-      required: true
+      required: true,
+      customValidation: "positive-number"
     },
 
     // Tire Information
@@ -475,10 +477,14 @@ export default function AssemblyFormPage() {
   ]
 
   return (
-    <FormTemplate
+    <TanStackFormTemplate
       title="Assembly Inspection"
       description="Complete this inspection to document tire, wheel, and disc assembly details."
       fields={fields}
+      inspectionType="assembly-form"
+      enableAutoSave={true}
+      autoSaveInterval={30000}
     />
   )
 }
+

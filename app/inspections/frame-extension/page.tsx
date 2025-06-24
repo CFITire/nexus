@@ -1,4 +1,4 @@
-import { FormTemplate } from "@/components/form-template"
+import { TanStackFormTemplate } from "@/components/tanstack-form-template"
 
 export default function FrameExtensionForm() {
   const fields = [
@@ -146,10 +146,13 @@ export default function FrameExtensionForm() {
   ];
 
   return (
-    <FormTemplate
+    <TanStackFormTemplate
       title="Frame Extension Inspection"
       description="Complete this inspection to document frame extension specifications and details."
       fields={fields}
+      inspectionType="frame-extension"
+      enableAutoSave={true}
+      autoSaveInterval={30000}
     />
-  );
+  )
 }

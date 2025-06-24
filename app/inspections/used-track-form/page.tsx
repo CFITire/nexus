@@ -1,4 +1,4 @@
-import { FormTemplate } from "@/components/form-template"
+import { TanStackFormTemplate } from "@/components/tanstack-form-template"
 
 export default function UsedTrackForm() {
   const fields = [
@@ -223,10 +223,13 @@ export default function UsedTrackForm() {
   ];
 
   return (
-    <FormTemplate
-      title="Used Track Form"
+    <TanStackFormTemplate
+      title="Used Track"
       description="Comprehensive track inspection and condition assessment form."
       fields={fields}
+      inspectionType="used-track-form"
+      enableAutoSave={true}
+      autoSaveInterval={30000}
     />
-  );
+  )
 }

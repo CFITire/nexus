@@ -1,11 +1,13 @@
 "use client"
 
-import { useState, useEffect } from "react"
+import { useState } from "react"
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
 import { Button } from "@/components/ui/button"
 import { Badge } from "@/components/ui/badge"
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs"
-import { IconFileText, IconShoppingCart, IconUsers, IconPhone, IconMail, IconCalendar, IconClock, IconTrendingUp, IconAlertTriangle } from "@tabler/icons-react"
+import { Skeleton } from "@/components/ui/skeleton"
+import { useAccounts, useContacts, useOpportunities, useRefreshCRMData } from "@/hooks/use-crm"
+import { IconFileText, IconShoppingCart, IconUsers, IconPhone, IconMail, IconCalendar, IconClock, IconTrendingUp, IconAlertTriangle, IconRefresh } from "@tabler/icons-react"
 
 interface Quote {
   id: string
@@ -44,13 +46,34 @@ interface SuggestedLead {
 }
 
 export function CrmDashboardContent() {
-  const [quotes, setQuotes] = useState<Quote[]>([])
-  const [orders, setOrders] = useState<Order[]>([])
-  const [suggestedLeads, setSuggestedLeads] = useState<SuggestedLead[]>([])
+  // Use TanStack Query hooks for real CRM data
+  const { 
+    data: accountsData, 
+    isLoading: accountsLoading, 
+    error: accountsError 
+  } = useAccounts()
+  
+  const { 
+    data: contactsData, 
+    isLoading: contactsLoading, 
+    error: contactsError 
+  } = useContacts()
+  
+  const { 
+    data: opportunitiesData, 
+    isLoading: opportunitiesLoading, 
+    error: opportunitiesError 
+  } = useOpportunities()
 
-  useEffect(() => {
-    // Mock data for quotes that need attention
-    setQuotes([
+  const refreshMutation = useRefreshCRMData()
+
+  // Extract data from API response format
+  const accounts = accountsData?.value || []
+  const contacts = contactsData?.value || []
+  const opportunities = opportunitiesData?.value || []
+
+  // Mock data for quotes that need attention (until we have real quote data)
+  const [quotes] = useState<Quote[]>([
       {
         id: "1",
         customerName: "Titan Construction Ltd",
@@ -86,80 +109,87 @@ export function CrmDashboardContent() {
       }
     ])
 
-    // Mock data for recent orders
-    setOrders([
-      {
-        id: "1",
-        customerName: "Acme Corporation",
-        orderNumber: "SO-2024-005678",
-        amount: 32000,
-        status: "confirmed",
-        submittedDate: "2024-06-10",
-        expectedDelivery: "2024-06-15",
-        items: "Commercial truck tires (24)"
-      },
-      {
-        id: "2",
-        customerName: "Western Equipment Dealers",
-        orderNumber: "SO-2024-005679",
-        amount: 18500,
-        status: "processing",
-        submittedDate: "2024-06-09",
-        expectedDelivery: "2024-06-14",
-        items: "Forklift tires (12), Wheels (12)"
-      },
-      {
-        id: "3",
-        customerName: "Beta Industries",
-        orderNumber: "SO-2024-005680", 
-        amount: 41000,
-        status: "shipped",
-        submittedDate: "2024-06-08",
-        expectedDelivery: "2024-06-13",
-        items: "Heavy equipment tire set"
-      }
-    ])
+  // Mock data for recent orders (until we have real order data)
+  const [orders] = useState<Order[]>([
+    {
+      id: "1",
+      customerName: "Acme Corporation",
+      orderNumber: "SO-2024-005678",
+      amount: 32000,
+      status: "confirmed",
+      submittedDate: "2024-06-10",
+      expectedDelivery: "2024-06-15",
+      items: "Commercial truck tires (24)"
+    },
+    {
+      id: "2",
+      customerName: "Western Equipment Dealers",
+      orderNumber: "SO-2024-005679",
+      amount: 18500,
+      status: "processing",
+      submittedDate: "2024-06-09",
+      expectedDelivery: "2024-06-14",
+      items: "Forklift tires (12), Wheels (12)"
+    },
+    {
+      id: "3",
+      customerName: "Beta Industries",
+      orderNumber: "SO-2024-005680", 
+      amount: 41000,
+      status: "shipped",
+      submittedDate: "2024-06-08",
+      expectedDelivery: "2024-06-13",
+      items: "Heavy equipment tire set"
+    }
+  ])
 
-    // Mock data for suggested leads
-    setSuggestedLeads([
-      {
-        id: "1",
-        companyName: "Arctic Logistics Inc",
-        contactName: "Jennifer Martinez",
-        email: "j.martinez@arcticlogistics.com",
-        phone: "(867) 555-0199",
-        industry: "Transportation",
-        reason: "Recent equipment purchase, no tire supplier",
-        lastInteraction: "2024-05-28",
-        score: 87,
-        source: "Industry database"
-      },
-      {
-        id: "2",
-        companyName: "Mountain Mining Solutions",
-        contactName: "Robert Kim",
-        email: "r.kim@mountainmining.com", 
-        phone: "(403) 555-0287",
-        industry: "Mining",
-        reason: "Contract renewal coming up in 30 days",
-        lastInteraction: "2024-04-15",
-        score: 92,
-        source: "Competitor analysis"
-      },
-      {
-        id: "3",
-        companyName: "Frontier Construction",
-        contactName: "Amanda Thompson",
-        email: "a.thompson@frontier.ca",
-        phone: "(780) 555-0345",
-        industry: "Construction", 
-        reason: "Expanding fleet, seeking tire partner",
-        lastInteraction: "Never",
-        score: 74,
-        source: "Trade publication"
-      }
-    ])
-  }, [])
+  // Mock data for suggested leads (until we have real lead scoring)
+  const [suggestedLeads] = useState<SuggestedLead[]>([
+    {
+      id: "1",
+      companyName: "Arctic Logistics Inc",
+      contactName: "Jennifer Martinez",
+      email: "j.martinez@arcticlogistics.com",
+      phone: "(867) 555-0199",
+      industry: "Transportation",
+      reason: "Recent equipment purchase, no tire supplier",
+      lastInteraction: "2024-05-28",
+      score: 87,
+      source: "Industry database"
+    },
+    {
+      id: "2",
+      companyName: "Mountain Mining Solutions",
+      contactName: "Robert Kim",
+      email: "r.kim@mountainmining.com", 
+      phone: "(403) 555-0287",
+      industry: "Mining",
+      reason: "Contract renewal coming up in 30 days",
+      lastInteraction: "2024-04-15",
+      score: 92,
+      source: "Competitor analysis"
+    },
+    {
+      id: "3",
+      companyName: "Frontier Construction",
+      contactName: "Amanda Thompson",
+      email: "a.thompson@frontier.ca",
+      phone: "(780) 555-0345",
+      industry: "Construction", 
+      reason: "Expanding fleet, seeking tire partner",
+      lastInteraction: "Never",
+      score: 74,
+      source: "Trade publication"
+    }
+  ])
+
+  // Combined loading state
+  const isLoading = accountsLoading || contactsLoading || opportunitiesLoading
+  const hasError = accountsError || contactsError || opportunitiesError
+
+  const handleRefresh = () => {
+    refreshMutation.mutate()
+  }
 
   const getQuoteStatusColor = (status: string) => {
     switch (status) {
@@ -190,8 +220,84 @@ export function CrmDashboardContent() {
     }
   }
 
+  // Show loading state
+  if (isLoading) {
+    return (
+      <div className="space-y-6">
+        <div className="grid gap-4 md:grid-cols-4">
+          {[...Array(4)].map((_, i) => (
+            <Card key={i}>
+              <CardHeader>
+                <Skeleton className="h-4 w-24" />
+              </CardHeader>
+              <CardContent>
+                <Skeleton className="h-8 w-16 mb-2" />
+                <Skeleton className="h-3 w-32" />
+              </CardContent>
+            </Card>
+          ))}
+        </div>
+        <div className="grid gap-6 md:grid-cols-2">
+          <Card>
+            <CardHeader>
+              <Skeleton className="h-6 w-32" />
+            </CardHeader>
+            <CardContent>
+              <Skeleton className="h-48 w-full" />
+            </CardContent>
+          </Card>
+          <Card>
+            <CardHeader>
+              <Skeleton className="h-6 w-32" />
+            </CardHeader>
+            <CardContent>
+              <Skeleton className="h-48 w-full" />
+            </CardContent>
+          </Card>
+        </div>
+      </div>
+    )
+  }
+
+  // Show error state
+  if (hasError) {
+    return (
+      <div className="space-y-6">
+        <Card>
+          <CardContent className="pt-6">
+            <div className="text-center">
+              <IconAlertTriangle className="h-12 w-12 text-destructive mx-auto mb-4" />
+              <h3 className="text-lg font-semibold text-destructive mb-2">Error Loading CRM Data</h3>
+              <p className="text-muted-foreground mb-4">
+                There was an error loading your CRM dashboard data. Please try refreshing.
+              </p>
+              <Button onClick={handleRefresh} disabled={refreshMutation.isPending}>
+                <IconRefresh className={`h-4 w-4 mr-2 ${refreshMutation.isPending ? 'animate-spin' : ''}`} />
+                Refresh
+              </Button>
+            </div>
+          </CardContent>
+        </Card>
+      </div>
+    )
+  }
+
   return (
     <div className="space-y-6">
+      {/* Header with refresh button */}
+      <div className="flex items-center justify-between">
+        <div>
+          <h2 className="text-2xl font-bold">CRM Dashboard</h2>
+          <p className="text-muted-foreground">
+            Real-time data from Dataverse • {accounts.length} accounts • {contacts.length} contacts • {opportunities.length} opportunities
+          </p>
+        </div>
+        <Button variant="outline" onClick={handleRefresh} disabled={refreshMutation.isPending}>
+          <IconRefresh className={`h-4 w-4 mr-2 ${refreshMutation.isPending ? 'animate-spin' : ''}`} />
+          Refresh
+        </Button>
+      </div>
+      
       {/* Quick Stats */}
       <div className="grid gap-4 md:grid-cols-4">
         <Card>
